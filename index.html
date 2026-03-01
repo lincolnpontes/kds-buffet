@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KDS - Buffet</title>
+    <style>
+        :root { --primary: #1565C0; --accent: #2e7d32; --danger: #c62828; --warning: #f9a825; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg); color: #333; }
+        
+        header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .setup-screen { position: fixed; inset: 0; background: white; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        
+        /* Balcão */
+        .grid-produtos { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding: 20px; }
+        .btn-pedido { 
+            background: white; border: none; border-radius: 15px; padding: 25px 15px; 
+            font-size: 18px; font-weight: bold; color: var(--primary);
+            box-shadow: 0 4px 0 #ccc; transition: 0.1s; cursor: pointer;
+        }
+        .btn-pedido:active { transform: translateY(3px); box-shadow: 0 1px 0 #ccc; background: #e3f2fd; }
+
+        /* Cozinha */
+        .card { 
+            background: white; margin: 15px; padding: 20px; border-radius: 12px; 
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1); border-left: 10px solid #ddd;
+        }
+        .pendente { border-left-color: var(--danger); animation: glow-red 1.5s infinite; }
+        .fazendo { border-left-color: var(--warning); }
+        .concluido { border-left-color: #9e9e9e; opacity: 0.5; text-decoration: line-through; transform: scale(0.95); }
+        
+        @keyframes glow-red { 0% { box-shadow: 0 0 5px var(--danger); } 50% { box-shadow: 0 0 20px var(--danger); } 100% { box-shadow: 0 0 5px var(--danger); } }
+
+        /* Modais */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 3000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 450px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        input, select { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        .btn-block { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="setup" class="setup-screen">
+    <h2 style="color: var(--primary)">Sistema de Reposição</h2>
+    <p>Escolha a função deste tablet:</p>
+    <button onclick="definirModo('balcao')" class="btn-block" style="background: var(--primary); color: white;">BALCÃO (SOLICITAR)</button>
+    <button onclick="definirModo('cozinha')" class="btn-block" style="background: var(--accent); color: white;">COZINHA (RECEBER)</button>
+</div>
+
+<div id="app" style="display:none">
+    <header>
+        <span id="labelModo">KDS</span>
+        <button onclick="abrirAdmin()" style="background:none; border:none; color:white; font-size:24px;">⚙️</button>
+    </header>
+    <div id="view-balcao" class="grid-produtos" style="display:none"></div>
+    <div id="view-cozinha" style="display:none"></div>
+</div>
+
+<div id="modalAdmin" class="modal">
+    <div class="modal-content">
+        <h3>Configurações Gerais</h3>
+        <div class="input-group">
+            <label>URL do Google Script:</label>
+            <input type="text" id="configUrl" placeholder="https://script.google.com/macros/s/...">
+        </div>
+        <div class="input-group">
+            <label>Gerenciar Produtos (Separados por vírgula):</label>
+            <input type="text" id="configProdutos" placeholder="Arroz, Feijão, Carne...">
+        </div>
+        <button class="btn-block" style="background: var(--accent); color: white;" onclick="salvarConfigs()">SALVAR E REINICIAR</button>
+        <button class="btn-block" style="background: #eee;" onclick="fecharAdmin()">CANCELAR</button>
+        <button class="btn-block" style="background: #fbc02d; margin-top: 20px;" onclick="localStorage.clear(); location.reload();">TROCAR MODO (BALCÃO/COZINHA)</button>
+    </div>
+</div>
+
+<audio id="audioAlerta" loop src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<script>
+    let config = JSON.parse(localStorage.getItem('kds_config')) || { url: '', produtos: 'Arroz,Feijão,Carne,Farofa', modo: '' };
+    let pedidos = [];
+    let somTocando = false;
+
+    // Inicia verificando se já existe um modo definido
+    if (config.modo) {
+        definirModo(config.modo);
+    }
+
+    function definirModo(m) {
+        config.modo = m;
+        localStorage.setItem('kds_config', JSON.stringify(config));
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        document.getElementById('labelModo').innerText = m === 'balcao' ? "SOLICITAR REPOSIÇÃO" : "COZINHA";
+        
+        if (m === 'balcao') {
+            renderizarBalcao();
+            document.getElementById('view-balcao').style.display = 'grid';
+        } else {
+            document.getElementById('view-cozinha').style.display = 'block';
+            if(config.url) setInterval(atualizarCozinha, 5000);
+        }
+    }
+
+    function renderizarBalcao() {
+        const lista = config.produtos.split(',');
+        const container = document.getElementById('view-balcao');
+        container.innerHTML = lista.map(p => `
+            <button class="btn-pedido" onclick="fazerPedido('${p.trim()}')">${p.trim()}</button>
+        `).join('');
+    }
+
+    async function fazerPedido(item) {
+        if (!config.url) return alert("Configure o URL do Google Script primeiro!");
+        if (!confirm(`Pedir reposição de ${item}?`)) return;
+
+        try {
+            await fetch(config.url, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ action: 'novo_pedido', produto: item })
+            });
+            alert("Pedido enviado!");
+        } catch (e) { alert("Erro ao enviar. Verifique o URL."); }
+    }
+
+    async function atualizarCozinha() {
+        try {
+            const r = await fetch(config.url);
+            pedidos = await r.json();
+            renderizarCozinha();
+            controlarAlarme();
+        } catch (e) { console.log("Erro de conexão"); }
+    }
+
+    function renderizarCozinha() {
+        const container = document.getElementById('view-cozinha');
+        const agora = Date.now();
+
+        container.innerHTML = pedidos
+            .filter(p => {
+                if (p.status !== 'concluido') return true;
+                return (agora - new Date(p.finalizadoEm).getTime()) < 300000; // 5 min
+            })
+            .reverse()
+            .map(p => `
+                <div class="card ${p.status}">
+                    <div>
+                        <b style="font-size:1.4em">${p.produto}</b><br>
+                        <small>${new Date(p.timestamp).toLocaleTimeString()}</small>
+                    </div>
+                    <div>
+                        ${p.status === 'pendente' ? `<button onclick="mudarStatus('${p.id}','fazendo')" style="padding:15px; background:var(--danger); color:white; border:none; border-radius:8px; font-weight:bold;">ASSUMIR</button>` : ''}
+                        ${p.status === 'fazendo' ? `<button onclick="mudarStatus('${p.id}','concluido')" style="padding:15px; background:var(--warning); border:none; border-radius:8px; font-weight:bold;">CONCLUIR</button>` : ''}
+                        ${p.status === 'concluido' ? `<span style="font-weight:bold; color:green;">PRONTO</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+    }
+
+    function controlarAlarme() {
+        const temPendente = pedidos.some(p => p.status === 'pendente');
+        const som = document.getElementById('audioAlerta');
+        if (temPendente && !somTocando) {
+            som.play().catch(() => console.log("Toque na tela para ativar o som"));
+            somTocando = true;
+        } else if (!temPendente) {
+            som.pause();
+            som.currentTime = 0;
+            somTocando = false;
+        }
+    }
+
+    async function mudarStatus(id, status) {
+        await fetch(config.url, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'atualizar_status', id: id, novoStatus: status })
+        });
+        atualizarCozinha();
+    }
+
+    // Funções de Admin
+    function abrirAdmin() {
+        const p = prompt("Senha:");
+        if (p === "1999") {
+            document.getElementById('configUrl').value = config.url;
+            document.getElementById('configProdutos').value = config.produtos;
+            document.getElementById('modalAdmin').style.display = 'flex';
+        } else { alert("Senha errada!"); }
+    }
+
+    function fecharAdmin() { document.getElementById('modalAdmin').style.display = 'none'; }
+
+    function salvarConfigs() {
+        config.url = document.getElementById('configUrl').value;
+        config.produtos = document.getElementById('configProdutos').value;
+        localStorage.setItem('kds_config', JSON.stringify(config));
+        location.reload();
+    }
+</script>
+</body>
+</html>

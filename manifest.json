@@ -1,0 +1,15 @@
+{
+  "name": "KDS Buffet",
+  "short_name": "KDS",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1565C0",
+  "theme_color": "#1565C0",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1046/1046747.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
