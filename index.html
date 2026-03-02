@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Pedidos Cozinha v1.3</title>
+    <title>Pedidos Cozinha v1.2</title>
 
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; }
@@ -32,20 +32,25 @@
         .item-avatar { background-color: #BBDEFB; color: #1565C0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; min-width: 40px; flex-shrink: 0; }
         .item-info { flex: 1; pointer-events: none; }
         .item-title { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
-        .item-subtitle { color: #666; font-size: 14px; }
+        .item-subtitle { color: #666; font-size: 14px; line-height: 1.4; }
 
         .status-pendente { border-left: 8px solid #d32f2f; background-color: #ffebee; }
         .status-fazendo { border-left: 8px solid #fbc02d; background-color: #fffde7; }
         .status-concluido { border-left: 8px solid #9e9e9e; opacity: 0.6; text-decoration: line-through; }
         
         .painel-ultimos { flex: 0 0 35%; height: 35%; max-height: 35%; border-top: 3px solid #ccc; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
-        .painel-titulo { padding: 10px; background: #eee; font-weight: bold; text-align: center; font-size: 14px; color: #333; border-bottom: 1px solid #ddd; flex-shrink: 0; }
+        .painel-titulo { padding: 10px; background: #eee; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
         .lista-pequena .item { padding: 10px 15px; }
         .lista-pequena .item-title { font-size: 14px; font-weight: normal; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .swipe-hint { color: #1976D2; font-size: 24px; font-weight: bold; pointer-events: none; }
         .alerta-pisca { animation: bg-pisca 1s infinite; }
         @keyframes bg-pisca { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+        .alerta-pisca-buscar { animation: bg-pisca-red 1s infinite; cursor: pointer; }
+        @keyframes bg-pisca-red { 0% { background-color: #ffffff; } 50% { background-color: #ffcdd2; } 100% { background-color: #ffffff; } }
+
+        #pedidoObsText::placeholder { font-style: italic; color: #999; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; }
         .modal { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
@@ -84,7 +89,10 @@
             <ul class="list" id="listaProdutosPanelas"></ul>
         </div>
         <div class="painel-ultimos">
-            <div class="painel-titulo">Últimos Pedidos</div>
+            <div class="painel-titulo">
+                <span style="flex:1; text-align:center; padding-left: 30px;">Últimos Pedidos</span>
+                <button onclick="abrirHistorico()" style="background:none; border:none; font-size:20px; cursor:pointer;" title="Histórico Completo do Dia">📋</button>
+            </div>
             <div class="scroll-area" style="background-color: #fafafa;">
                 <ul class="list lista-pequena" id="listaUltimosPedidosPanelas"></ul>
             </div>
@@ -104,17 +112,29 @@
         <input type="hidden" id="pedidoItemNome">
         
         <div class="form-group">
-            <label>Observação Rápida:</label>
-            <select id="pedidoObsSelect">
-                </select>
+            <label>Observações Rápidas (Toque para adicionar):</label>
+            <div id="obsChipsContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                </div>
         </div>
         <div class="form-group">
-            <label>Ou digite uma observação:</label>
-            <input type="text" id="pedidoObsText" placeholder="Ex: Sem sal, extra, etc...">
+            <label>Observação do Pedido:</label>
+            <input type="text" id="pedidoObsText" placeholder="digite aqui">
         </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="fecharModal('modalFazerPedido')">Cancelar</button>
             <button class="btn-action" style="background: #2e7d32;" onclick="enviarPedidoConfirmado()">Confirmar Pedido</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalHistorico">
+    <div class="modal" style="max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-title">Histórico de Hoje</div>
+        <div class="scroll-area" style="flex: 1; border: 1px solid #eee; border-radius: 5px; padding: 5px;">
+            <ul class="list" id="listaHistorico" style="padding-bottom: 0;"></ul>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalHistorico')">Fechar</button>
         </div>
     </div>
 </div>
@@ -135,7 +155,7 @@
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
         <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">
-            Pedidos Cozinha - v1.3
+            Pedidos Cozinha - v1.2
         </div>
 
         <button class="btn-outline" onclick="abrirGerenciar('produtos')">📦 Gerenciar Produtos</button>
@@ -221,6 +241,7 @@
     let categoriaAtual = null;
     let pedidosServidor = [];
     let pedidosBloqueados = new Set();
+    let pedidosCientes = new Set(); // Guarda quem já foi "clicado" para parar de piscar vermelho
     let loopSync = null;
     let alarmeTocando = false;
 
@@ -273,7 +294,7 @@
                     alert("Dados puxados com sucesso!");
                     location.reload();
                 } else {
-                    iniciar(); // Atualiza silenciosamente
+                    iniciar(); 
                 }
             } else if(pedirConfirmacao) { 
                 alert("Nenhum dado encontrado na nuvem ainda."); 
@@ -361,7 +382,7 @@
         });
     }
 
-    // --- NOVO FLUXO DE PEDIDO (COM OBSERVAÇÃO) ---
+    // --- FLUXO DE PEDIDO (OBS MÚLTIPLAS COM CHIPS) ---
     function abrirModalPedido(nomeProduto) {
         if(!db.configs.url) return alert("URL não configurada! Vá na engrenagem ⚙️");
         
@@ -369,22 +390,31 @@
         document.getElementById('pedidoItemNome').value = nomeProduto;
         document.getElementById('pedidoObsText').value = '';
         
-        const select = document.getElementById('pedidoObsSelect');
-        select.innerHTML = `<option value="">-- Nenhuma / Digitar manual --</option>`;
+        const container = document.getElementById('obsChipsContainer');
+        container.innerHTML = '';
         db.observacoes.forEach(obs => {
-            select.innerHTML += `<option value="${obs}">${obs}</option>`;
+            // Cada chip agora chama addObsToText()
+            container.innerHTML += `<div class="chip" style="font-weight: normal;" onclick="addObsToText('${obs}')">${obs}</div>`;
         });
         
         document.getElementById('modalFazerPedido').style.display = 'flex';
     }
 
+    function addObsToText(obsStr) {
+        const input = document.getElementById('pedidoObsText');
+        if(input.value.trim() === '') {
+            input.value = obsStr;
+        } else {
+            input.value += ', ' + obsStr;
+        }
+        input.focus();
+    }
+
     async function enviarPedidoConfirmado() {
         const nome = document.getElementById('pedidoItemNome').value;
-        const obsSelect = document.getElementById('pedidoObsSelect').value;
         const obsText = document.getElementById('pedidoObsText').value.trim();
         
-        let obsFinal = obsText !== "" ? obsText : obsSelect;
-        let nomeParaEnviar = obsFinal ? `${nome} (Obs: ${obsFinal})` : nome;
+        let nomeParaEnviar = obsText ? `${nome} (Obs: ${obsText})` : nome;
 
         document.getElementById('modalFazerPedido').style.display = 'none';
 
@@ -417,15 +447,20 @@
         } catch(e) { console.log("Aguardando conexão..."); }
     }
 
+    // --- DAR CIÊNCIA NO ALERTA VERMELHO ---
+    function darCienciaBuscar(id) {
+        pedidosCientes.add(id.toString());
+        renderizarUltimosPedidos();
+    }
+
     function renderizarUltimosPedidos() {
         const lista = document.getElementById('listaUltimosPedidosPanelas');
         const agora = Date.now();
         lista.innerHTML = '';
         
         let recentes = pedidosServidor.filter(p => {
-            // Status agora inclui 'enviado' e 'buscar'
             if(p.status !== 'concluido' && p.status !== 'enviado' && p.status !== 'buscar') return true;
-            return (agora - new Date(p.finalizadoEm).getTime()) < 300000;
+            return (agora - new Date(p.finalizadoEm).getTime()) < 300000; // Oculta finalizados após 5 min
         }).reverse().slice(0, 15);
         
         if(recentes.length === 0) {
@@ -436,21 +471,60 @@
         recentes.forEach(p => {
             let statusTraduzido = '';
             let corStatus = '';
+            let piscaClass = '';
+            let onclickHtml = '';
             
             if (p.status === 'pendente') { statusTraduzido = 'Pendente'; corStatus = '#d32f2f'; }
             else if (p.status === 'fazendo') { statusTraduzido = 'Em preparo'; corStatus = '#fbc02d'; }
             else if (p.status === 'enviado') { statusTraduzido = 'Enviado'; corStatus = '#9e9e9e'; }
-            else if (p.status === 'buscar') { statusTraduzido = 'Pode ir buscar'; corStatus = '#9e9e9e'; }
+            else if (p.status === 'buscar') { 
+                if(!pedidosCientes.has(p.id.toString())) {
+                    // PISCA VERMELHO SE NÃO CLICOU AINDA
+                    statusTraduzido = 'Pode ir buscar'; 
+                    corStatus = '#d32f2f'; 
+                    piscaClass = 'alerta-pisca-buscar';
+                    onclickHtml = `onclick="darCienciaBuscar('${p.id}')"`;
+                } else {
+                    // FICA CINZA APÓS CLICAR
+                    statusTraduzido = 'Pode ir buscar'; 
+                    corStatus = '#9e9e9e'; 
+                }
+            }
             else { statusTraduzido = 'Finalizado'; corStatus = '#9e9e9e'; }
 
             lista.innerHTML += `
-                <li class="item" style="border-left: 5px solid ${corStatus};">
+                <li class="item ${piscaClass}" style="border-left: 5px solid ${corStatus};" ${onclickHtml}>
                     <div class="item-info">
                         <div class="item-title"><strong>${p.produto}</strong> - ${new Date(p.timestamp).toLocaleTimeString()} - <strong style="color:${corStatus}">${statusTraduzido}</strong></div>
                     </div>
                 </li>
             `;
         });
+    }
+
+    // --- HISTÓRICO DO DIA ---
+    function abrirHistorico() {
+        const lista = document.getElementById('listaHistorico');
+        lista.innerHTML = '';
+        const dataHoje = new Date().toDateString(); // Data local do aparelho
+
+        const historicoHoje = pedidosServidor.filter(p => new Date(p.timestamp).toDateString() === dataHoje).reverse();
+
+        if(historicoHoje.length === 0) {
+            lista.innerHTML = '<li style="padding: 15px; text-align: center; color: #999;">Nenhum pedido hoje.</li>';
+        } else {
+            historicoHoje.forEach(p => {
+                let statusTxt = p.status === 'pendente' ? 'Pendente' : (p.status === 'fazendo' ? 'Em preparo' : (p.status === 'enviado' ? 'Enviado' : (p.status === 'buscar' ? 'Buscar' : 'Finalizado')));
+                lista.innerHTML += `
+                    <li class="item" style="padding: 10px; border-bottom: 1px solid #eee;">
+                        <div class="item-info">
+                            <div class="item-title" style="font-size: 15px;">${p.produto}</div>
+                            <div class="item-subtitle">${new Date(p.timestamp).toLocaleTimeString()} - ${statusTxt}</div>
+                        </div>
+                    </li>`;
+            });
+        }
+        document.getElementById('modalHistorico').style.display = 'flex';
     }
 
     function renderizarListaCozinha() {
@@ -468,10 +542,14 @@
             let isFinal = false;
 
             if (p.status === 'pendente') { emoji = '🔔'; acaoTxt = 'Toque para aceitar'; }
-            else if (p.status === 'fazendo') { emoji = '🔥'; acaoTxt = '👉 Deslize: Enviado | 👆 Segure: Buscar'; }
+            else if (p.status === 'fazendo') { 
+                emoji = '🔥'; 
+                // TEXTOS ALINHADOS EM DUAS LINHAS
+                acaoTxt = '👉 Deslize: Enviado<br>👆 Segure: Pedir para Buscar'; 
+            }
             else if (p.status === 'enviado' || p.status === 'buscar') { emoji = '✔️'; acaoTxt = '👈 Deslize para desfazer'; isFinal = true; }
             
-            let cssStatus = isFinal ? 'concluido' : p.status; // Aplica o CSS de riscado se for final
+            let cssStatus = isFinal ? 'concluido' : p.status;
 
             lista.innerHTML += `
                 <li class="item status-${cssStatus}" id="ped-${p.id}" 
@@ -482,14 +560,13 @@
                     <div class="item-avatar" style="background:transparent; font-size:24px;">${emoji}</div>
                     <div class="item-info">
                         <div class="item-title">${p.produto}</div>
-                        <div class="item-subtitle">${new Date(p.timestamp).toLocaleTimeString()} - ${acaoTxt}</div>
+                        <div class="item-subtitle">${new Date(p.timestamp).toLocaleTimeString()}<br>${acaoTxt}</div>
                     </div>
                 </li>
             `;
         });
     }
 
-    // --- NOVOS GESTOS: SWIPE E SEGURAR (LONG PRESS) ---
     let touchStartX = 0;
     let pressTimer;
     let isLongPress = false;
@@ -501,23 +578,19 @@
         let id = elemento.getAttribute('data-id');
         let statusAtual = elemento.getAttribute('data-status');
         
-        // Só ativa o Segurar se estiver "Em preparo" (fazendo)
         if(statusAtual === 'fazendo') {
             pressTimer = setTimeout(() => {
                 isLongPress = true;
-                alterarStatusPedido(id, 'buscar'); // Segurou -> Buscar
-            }, 600); // 600 milissegundos
+                alterarStatusPedido(id, 'buscar');
+            }, 600);
         }
     }
 
-    function handleTouchMove(e) {
-        clearTimeout(pressTimer); // Cancelar se o dedo mexer
-    }
+    function handleTouchMove(e) { clearTimeout(pressTimer); }
 
     function handleTouchEnd(e, elemento) { 
         clearTimeout(pressTimer);
-        
-        if(isLongPress) return; // Se disparou o evento de segurar, ignora o resto
+        if(isLongPress) return;
 
         let touchEndX = e.changedTouches[0].screenX;
         let diff = touchEndX - touchStartX;
@@ -526,10 +599,8 @@
         const statusAtual = elemento.getAttribute('data-status');
 
         if (Math.abs(diff) < 20) {
-            // CLIQUE: Aceitar
             if(statusAtual === 'pendente') alterarStatusPedido(id, 'fazendo');
         } else if (diff > 80) {
-            // SWIPE DIREITA: Enviado
             if(statusAtual === 'fazendo') {
                 alterarStatusPedido(id, 'enviado');
             } else if (statusAtual === 'pendente') {
@@ -537,7 +608,6 @@
                 setTimeout(() => renderizarListaCozinha(), 2000);
             }
         } else if (diff < -80) {
-            // SWIPE ESQUERDA: Desfazer
             if(statusAtual === 'enviado' || statusAtual === 'buscar' || statusAtual === 'concluido') {
                 alterarStatusPedido(id, 'fazendo');
             }
@@ -589,7 +659,6 @@
     function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
     function abrirLoginAdmin() { document.getElementById('senhaAdmin').value = ''; document.getElementById('modalLoginAdmin').style.display = 'flex'; setTimeout(()=>document.getElementById('senhaAdmin').focus(), 100); }
     
-    // Auto-Pull se for a primeira vez
     function salvarUrlGeral() {
         const urlInput = document.getElementById('configUrlApp').value.trim();
         if(urlInput === "") return alert("A URL não pode estar vazia.");
@@ -599,7 +668,7 @@
         salvarBancoLocal(); 
         
         if(primeiraVez) {
-            sincronizarPuxarNuvem(false); // Puxa sem confirmar
+            sincronizarPuxarNuvem(false); 
         } else {
             alert("✅ URL salva com sucesso!");
         }
