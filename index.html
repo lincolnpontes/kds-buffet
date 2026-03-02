@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Pedidos Cozinha v1.2</title>
+    <title>Pedidos Cozinha v1.3</title>
 
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; }
@@ -29,7 +29,7 @@
         .list { padding: 0; margin: 0; list-style: none; padding-bottom: 20px; }
         .item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: transform 0.2s; overflow: hidden; }
         .item:active { background-color: #e3f2fd; }
-        .item-avatar { background-color: #BBDEFB; color: #1565C0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; min-width: 40px; }
+        .item-avatar { background-color: #BBDEFB; color: #1565C0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; min-width: 40px; flex-shrink: 0; }
         .item-info { flex: 1; pointer-events: none; }
         .item-title { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
         .item-subtitle { color: #666; font-size: 14px; }
@@ -98,6 +98,27 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="modalFazerPedido">
+    <div class="modal">
+        <div class="modal-title" id="tituloModalPedido">Pedir Produto</div>
+        <input type="hidden" id="pedidoItemNome">
+        
+        <div class="form-group">
+            <label>Observação Rápida:</label>
+            <select id="pedidoObsSelect">
+                </select>
+        </div>
+        <div class="form-group">
+            <label>Ou digite uma observação:</label>
+            <input type="text" id="pedidoObsText" placeholder="Ex: Sem sal, extra, etc...">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalFazerPedido')">Cancelar</button>
+            <button class="btn-action" style="background: #2e7d32;" onclick="enviarPedidoConfirmado()">Confirmar Pedido</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modalLoginAdmin">
     <div class="modal">
         <div class="modal-title">Acesso Restrito</div>
@@ -114,11 +135,12 @@
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
         <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">
-            Pedidos Cozinha - v1.2
+            Pedidos Cozinha - v1.3
         </div>
 
         <button class="btn-outline" onclick="abrirGerenciar('produtos')">📦 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="abrirGerenciar('categorias')">🏷️ Gerenciar Categorias</button>
+        <button class="btn-outline" onclick="abrirGerenciar('observacoes')">💬 Gerenciar Observações</button>
 
         <h3 style="font-size: 16px; color: #555; margin-top: 25px; margin-bottom: 10px;">Conexão e Sincronização</h3>
         <div class="form-group">
@@ -128,7 +150,7 @@
 
         <div style="display: flex; gap: 10px; margin-bottom: 10px; margin-top: 15px;">
             <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar na Nuvem</button>
-            <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="sincronizarPuxarNuvem()">⬇️ Puxar da Nuvem</button>
+            <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="sincronizarPuxarNuvem(true)">⬇️ Puxar da Nuvem</button>
         </div>
 
         <div class="modal-actions">
@@ -198,7 +220,7 @@
     let db = carregarBanco();
     let categoriaAtual = null;
     let pedidosServidor = [];
-    let pedidosBloqueados = new Set(); // TRAVA ANTI-LAG DA V1.2
+    let pedidosBloqueados = new Set();
     let loopSync = null;
     let alarmeTocando = false;
 
@@ -206,9 +228,14 @@
         let defaultDB = {
             produtos: [{ nome: "Arroz", categoria: "Geral" }],
             categorias: [{ nome: "Geral", cor: "#fff0b3", corTexto: "#000000" }],
+            observacoes: ["Urgente", "Sem sal", "Pouco óleo"],
             configs: { modo: "panelas", url: "" }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
+        if(local) {
+            if(!local.observacoes) local.observacoes = ["Urgente", "Sem sal", "Pouco óleo"];
+            if(local.configs && local.configs.modo === 'balcao') local.configs.modo = 'panelas';
+        }
         return local || defaultDB;
     }
 
@@ -223,27 +250,37 @@
             document.querySelector('#modalPainelUnificado .btn-action').innerText = "Salvando...";
             await fetch(db.configs.url, { 
                 method: 'POST', mode: 'no-cors', 
-                body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias } }) 
+                body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, observacoes: db.observacoes } }) 
             });
-            alert("Produtos e Categorias salvos na Nuvem com sucesso!");
+            alert("Dados salvos na Nuvem com sucesso!");
         } catch(e) { alert("Erro ao enviar para a nuvem."); }
         document.querySelector('#modalPainelUnificado .btn-action').innerText = "💾 Salvar URL";
     }
 
-    async function sincronizarPuxarNuvem() {
-        if(!db.configs.url) return alert("Salve a URL do Google Script primeiro!");
-        if(!confirm("Você irá sobrepor os dados atuais. Deseja continuar?")) return; // NOVA CONFIRMAÇÃO DA V1.2
+    async function sincronizarPuxarNuvem(pedirConfirmacao) {
+        if(!db.configs.url) return;
+        if(pedirConfirmacao && !confirm("Você irá sobrepor os dados atuais. Deseja continuar?")) return; 
+        
         try {
             let res = await fetch(db.configs.url + "?action=carregar_banco");
             let nuvemDB = await res.json();
-            if(nuvemDB.produtos && nuvemDB.categorias) {
+            if(nuvemDB.produtos) {
                 db.produtos = nuvemDB.produtos;
-                db.categorias = nuvemDB.categorias;
+                db.categorias = nuvemDB.categorias || [];
+                db.observacoes = nuvemDB.observacoes || ["Urgente", "Sem sal"];
                 salvarBancoLocal();
-                alert("Dados puxados com sucesso!");
-                location.reload();
-            } else { alert("Nenhum dado encontrado na nuvem ainda."); }
-        } catch(e) { alert("Erro ao puxar dados da nuvem."); }
+                if(pedirConfirmacao) {
+                    alert("Dados puxados com sucesso!");
+                    location.reload();
+                } else {
+                    iniciar(); // Atualiza silenciosamente
+                }
+            } else if(pedirConfirmacao) { 
+                alert("Nenhum dado encontrado na nuvem ainda."); 
+            }
+        } catch(e) { 
+            if(pedirConfirmacao) alert("Erro ao puxar dados da nuvem."); 
+        }
     }
 
     document.getElementById('senhaAdmin').addEventListener('input', function(e) {
@@ -312,7 +349,7 @@
             const primeiraLetra = p.nome.charAt(0).toUpperCase();
             
             lista.innerHTML += `
-                <li class="item" onclick="enviarPedidoPanelas('${p.nome}')">
+                <li class="item" onclick="abrirModalPedido('${p.nome}')">
                     <div class="item-avatar" style="background-color: ${catObj.cor}; color: ${catObj.corTexto};">${primeiraLetra}</div>
                     <div class="item-info">
                         <div class="item-title">${p.nome}</div>
@@ -324,11 +361,35 @@
         });
     }
 
-    async function enviarPedidoPanelas(nome) {
-        if(!db.configs.url) return alert("URL não configurada! Clique na ⚙️.");
-        if(!confirm(`Pedir reposição de: ${nome}?`)) return;
+    // --- NOVO FLUXO DE PEDIDO (COM OBSERVAÇÃO) ---
+    function abrirModalPedido(nomeProduto) {
+        if(!db.configs.url) return alert("URL não configurada! Vá na engrenagem ⚙️");
+        
+        document.getElementById('tituloModalPedido').innerText = `Pedir: ${nomeProduto}`;
+        document.getElementById('pedidoItemNome').value = nomeProduto;
+        document.getElementById('pedidoObsText').value = '';
+        
+        const select = document.getElementById('pedidoObsSelect');
+        select.innerHTML = `<option value="">-- Nenhuma / Digitar manual --</option>`;
+        db.observacoes.forEach(obs => {
+            select.innerHTML += `<option value="${obs}">${obs}</option>`;
+        });
+        
+        document.getElementById('modalFazerPedido').style.display = 'flex';
+    }
+
+    async function enviarPedidoConfirmado() {
+        const nome = document.getElementById('pedidoItemNome').value;
+        const obsSelect = document.getElementById('pedidoObsSelect').value;
+        const obsText = document.getElementById('pedidoObsText').value.trim();
+        
+        let obsFinal = obsText !== "" ? obsText : obsSelect;
+        let nomeParaEnviar = obsFinal ? `${nome} (Obs: ${obsFinal})` : nome;
+
+        document.getElementById('modalFazerPedido').style.display = 'none';
+
         try {
-            await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'novo_pedido', produto: nome }) });
+            await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'novo_pedido', produto: nomeParaEnviar }) });
             setTimeout(syncGeral, 1000); 
         } catch(e) { alert("Erro ao enviar pedido."); }
     }
@@ -339,7 +400,6 @@
             const resp = await fetch(db.configs.url);
             const dadosServidor = await resp.json();
             
-            // LÓGICA ANTI-LAG: Se o item está bloqueado (sendo atualizado agora), ignoramos o servidor e mantemos o nosso
             pedidosServidor = dadosServidor.map(pServ => {
                 if(pedidosBloqueados.has(pServ.id.toString())) {
                     let pLocal = pedidosServidor.find(x => x.id == pServ.id);
@@ -363,7 +423,8 @@
         lista.innerHTML = '';
         
         let recentes = pedidosServidor.filter(p => {
-            if(p.status !== 'concluido') return true;
+            // Status agora inclui 'enviado' e 'buscar'
+            if(p.status !== 'concluido' && p.status !== 'enviado' && p.status !== 'buscar') return true;
             return (agora - new Date(p.finalizadoEm).getTime()) < 300000;
         }).reverse().slice(0, 15);
         
@@ -373,8 +434,15 @@
         }
 
         recentes.forEach(p => {
-            let statusTraduzido = p.status === 'pendente' ? 'Pendente' : (p.status === 'fazendo' ? 'Em preparo' : 'Finalizado');
-            let corStatus = p.status === 'pendente' ? '#d32f2f' : (p.status === 'fazendo' ? '#fbc02d' : '#9e9e9e');
+            let statusTraduzido = '';
+            let corStatus = '';
+            
+            if (p.status === 'pendente') { statusTraduzido = 'Pendente'; corStatus = '#d32f2f'; }
+            else if (p.status === 'fazendo') { statusTraduzido = 'Em preparo'; corStatus = '#fbc02d'; }
+            else if (p.status === 'enviado') { statusTraduzido = 'Enviado'; corStatus = '#9e9e9e'; }
+            else if (p.status === 'buscar') { statusTraduzido = 'Pode ir buscar'; corStatus = '#9e9e9e'; }
+            else { statusTraduzido = 'Finalizado'; corStatus = '#9e9e9e'; }
+
             lista.innerHTML += `
                 <li class="item" style="border-left: 5px solid ${corStatus};">
                     <div class="item-info">
@@ -391,16 +459,25 @@
         lista.innerHTML = '';
         
         pedidosServidor.filter(p => {
-            if(p.status !== 'concluido') return true;
+            if(p.status !== 'concluido' && p.status !== 'enviado' && p.status !== 'buscar') return true;
             return (agora - new Date(p.finalizadoEm).getTime()) < 300000;
         }).reverse().forEach(p => {
-            let emoji = p.status === 'concluido' ? '✔️' : (p.status === 'fazendo' ? '🔥' : '🔔');
-            let acaoTxt = p.status === 'pendente' ? 'Toque para aceitar' : (p.status === 'fazendo' ? '👉 Deslize para concluir' : '👈 Deslize para desfazer');
             
+            let emoji = '🔔';
+            let acaoTxt = '';
+            let isFinal = false;
+
+            if (p.status === 'pendente') { emoji = '🔔'; acaoTxt = 'Toque para aceitar'; }
+            else if (p.status === 'fazendo') { emoji = '🔥'; acaoTxt = '👉 Deslize: Enviado | 👆 Segure: Buscar'; }
+            else if (p.status === 'enviado' || p.status === 'buscar') { emoji = '✔️'; acaoTxt = '👈 Deslize para desfazer'; isFinal = true; }
+            
+            let cssStatus = isFinal ? 'concluido' : p.status; // Aplica o CSS de riscado se for final
+
             lista.innerHTML += `
-                <li class="item status-${p.status}" id="ped-${p.id}" 
+                <li class="item status-${cssStatus}" id="ped-${p.id}" 
                     data-id="${p.id}" data-status="${p.status}"
-                    ontouchstart="handleTouchStart(event)" 
+                    ontouchstart="handleTouchStart(event, this)" 
+                    ontouchmove="handleTouchMove(event)"
                     ontouchend="handleTouchEnd(event, this)">
                     <div class="item-avatar" style="background:transparent; font-size:24px;">${emoji}</div>
                     <div class="item-info">
@@ -412,10 +489,36 @@
         });
     }
 
+    // --- NOVOS GESTOS: SWIPE E SEGURAR (LONG PRESS) ---
     let touchStartX = 0;
-    function handleTouchStart(e) { touchStartX = e.changedTouches[0].screenX; }
+    let pressTimer;
+    let isLongPress = false;
 
-    function handleTouchEnd(e, elemento) {
+    function handleTouchStart(e, elemento) { 
+        touchStartX = e.changedTouches[0].screenX; 
+        isLongPress = false;
+        
+        let id = elemento.getAttribute('data-id');
+        let statusAtual = elemento.getAttribute('data-status');
+        
+        // Só ativa o Segurar se estiver "Em preparo" (fazendo)
+        if(statusAtual === 'fazendo') {
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                alterarStatusPedido(id, 'buscar'); // Segurou -> Buscar
+            }, 600); // 600 milissegundos
+        }
+    }
+
+    function handleTouchMove(e) {
+        clearTimeout(pressTimer); // Cancelar se o dedo mexer
+    }
+
+    function handleTouchEnd(e, elemento) { 
+        clearTimeout(pressTimer);
+        
+        if(isLongPress) return; // Se disparou o evento de segurar, ignora o resto
+
         let touchEndX = e.changedTouches[0].screenX;
         let diff = touchEndX - touchStartX;
         
@@ -426,41 +529,38 @@
             // CLIQUE: Aceitar
             if(statusAtual === 'pendente') alterarStatusPedido(id, 'fazendo');
         } else if (diff > 80) {
-            // SWIPE DIREITA: Concluir
+            // SWIPE DIREITA: Enviado
             if(statusAtual === 'fazendo') {
-                alterarStatusPedido(id, 'concluido');
+                alterarStatusPedido(id, 'enviado');
             } else if (statusAtual === 'pendente') {
                 elemento.querySelector('.item-subtitle').innerText = "⚠️ Toque para aceitar primeiro!";
                 setTimeout(() => renderizarListaCozinha(), 2000);
             }
         } else if (diff < -80) {
             // SWIPE ESQUERDA: Desfazer
-            if(statusAtual === 'concluido') alterarStatusPedido(id, 'fazendo');
+            if(statusAtual === 'enviado' || statusAtual === 'buscar' || statusAtual === 'concluido') {
+                alterarStatusPedido(id, 'fazendo');
+            }
         }
     }
 
-    // UX OTIMISTA COM TRAVA (RESOLVE O LAG)
     function alterarStatusPedido(id, novoStatus) {
-        // 1. Coloca o pedido na lista de bloqueados
         pedidosBloqueados.add(id.toString());
 
-        // 2. Altera a memória local na hora
         let pedidoLocal = pedidosServidor.find(x => x.id == id);
         if(pedidoLocal) {
             pedidoLocal.status = novoStatus;
-            if(novoStatus === 'concluido') pedidoLocal.finalizadoEm = new Date().toISOString();
+            if(novoStatus === 'enviado' || novoStatus === 'buscar' || novoStatus === 'concluido') {
+                pedidoLocal.finalizadoEm = new Date().toISOString();
+            }
         }
         
-        // 3. Redesenha a tela instantaneamente
         renderizarListaCozinha();
 
-        // 4. Manda pro Google em silêncio
         fetch(db.configs.url, { 
-            method: 'POST', 
-            mode: 'no-cors', 
+            method: 'POST', mode: 'no-cors', 
             body: JSON.stringify({ action: 'atualizar_status', id: id, novoStatus: novoStatus }) 
         }).then(() => {
-            // 5. Destrava o pedido após 2 segundos (tempo suficiente para o Google processar)
             setTimeout(() => pedidosBloqueados.delete(id.toString()), 2000);
         }).catch(() => {
             pedidosBloqueados.delete(id.toString());
@@ -488,24 +588,31 @@
 
     function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
     function abrirLoginAdmin() { document.getElementById('senhaAdmin').value = ''; document.getElementById('modalLoginAdmin').style.display = 'flex'; setTimeout(()=>document.getElementById('senhaAdmin').focus(), 100); }
+    
+    // Auto-Pull se for a primeira vez
     function salvarUrlGeral() {
         const urlInput = document.getElementById('configUrlApp').value.trim();
         if(urlInput === "") return alert("A URL não pode estar vazia.");
+        
+        let primeiraVez = (db.configs.url === "");
         db.configs.url = urlInput;
-        salvarBancoLocal(); alert("✅ URL salva com sucesso!");
+        salvarBancoLocal(); 
+        
+        if(primeiraVez) {
+            sincronizarPuxarNuvem(false); // Puxa sem confirmar
+        } else {
+            alert("✅ URL salva com sucesso!");
+        }
     }
+    
     function voltarPainelUnificado() { fecharModal('modalListagem'); document.getElementById('modalPainelUnificado').style.display = 'flex'; }
 
     function moverItem(tipo, index, direcao) {
-        const lista = tipo === 'produtos' ? db.produtos : db.categorias;
+        const lista = tipo === 'produtos' ? db.produtos : (tipo === 'categorias' ? db.categorias : db.observacoes);
         if(direcao === 'cima' && index > 0) {
-            const temp = lista[index];
-            lista[index] = lista[index - 1];
-            lista[index - 1] = temp;
+            const temp = lista[index]; lista[index] = lista[index - 1]; lista[index - 1] = temp;
         } else if (direcao === 'baixo' && index < lista.length - 1) {
-            const temp = lista[index];
-            lista[index] = lista[index + 1];
-            lista[index + 1] = temp;
+            const temp = lista[index]; lista[index] = lista[index + 1]; lista[index + 1] = temp;
         }
         salvarBancoLocal(); iniciar(); abrirGerenciar(tipo);
     }
@@ -529,14 +636,26 @@
             db.categorias.forEach((c, idx) => {
                 lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><span class="color-preview" style="background:${c.cor}; color:${c.corTexto}">${c.nome}</span></div><div class="gerenciar-actions"><button onclick="moverItem('categorias', ${idx}, 'cima')">🔼</button><button onclick="moverItem('categorias', ${idx}, 'baixo')">🔽</button><button onclick="abrirFormCategoria(${idx})">✏️</button><button onclick="excluirItem('categorias', '${c.nome}')">🗑️</button></div></div>`;
             });
+        } else if (tipo === 'observacoes') {
+            titulo.innerText = "Gerenciar Observações";
+            btnNovo.onclick = () => novaObservacao();
+            db.observacoes.forEach((obs, idx) => {
+                lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${obs}</strong></div><div class="gerenciar-actions"><button onclick="moverItem('observacoes', ${idx}, 'cima')">🔼</button><button onclick="moverItem('observacoes', ${idx}, 'baixo')">🔽</button><button onclick="excluirItem('observacoes', '${obs}')">🗑️</button></div></div>`;
+            });
         }
         document.getElementById('modalListagem').style.display = 'flex';
+    }
+
+    function novaObservacao() {
+        const obs = prompt("Digite a nova observação padrão (Ex: Sem sal):");
+        if(obs) { db.observacoes.push(obs); salvarBancoLocal(); abrirGerenciar('observacoes'); }
     }
 
     function excluirItem(tipo, id) {
         if(!confirm("Certeza que deseja excluir?")) return;
         if(tipo === 'produtos') db.produtos.splice(id, 1);
         if(tipo === 'categorias') db.categorias = db.categorias.filter(i => i.nome !== id);
+        if(tipo === 'observacoes') db.observacoes = db.observacoes.filter(i => i !== id);
         salvarBancoLocal(); iniciar(); abrirGerenciar(tipo);
     }
 
