@@ -6,28 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Pedidos Cozinha v1.5</title>
+    <title>Pedidos Cozinha v1.6</title>
 
     <style>
-        /* CSS DA ETIQUETADORA V1.7 - BASE */
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; }
         .app-container { width: 100%; max-width: 500px; background-color: #ffffff; min-height: 100vh; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; }
         
-        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; color: white; transition: background-color 0.3s ease; }
+        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; color: white; background-color: #1565C0; }
         .header-title { flex: 1; font-size: 18px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .header-actions button { background: none; border: none; color: white; font-size: 24px; cursor: pointer; margin-left: 10px; }
         
-        .operator-bar { padding: 8px 15px; display: flex; align-items: center; gap: 10px; font-size: 14px; color: white; transition: background-color 0.3s ease; }
+        .operator-bar { padding: 8px 15px; display: flex; align-items: center; gap: 10px; font-size: 14px; color: white; background-color: #1976D2; }
         .operator-bar select { flex: 1; padding: 8px; border-radius: 4px; border: none; font-weight: bold; }
-        
-        /* CONTROLE DE CORES (TEMAS) */
-        body.theme-panelas .header { background-color: #1565C0 !important; }
-        body.theme-panelas .operator-bar { background-color: #1976D2 !important; }
-        
-        body.theme-cozinha .header { background-color: #2e7d32 !important; }
-        body.theme-cozinha .operator-bar { background-color: #388e3c !important; }
 
-        /* FILTROS E LISTAS */
         .filters { padding: 10px 15px; display: flex; gap: 10px; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid #eee; }
         .chip { background-color: #e0e0e0; color: #333; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
         .chip.active { border: 2px solid #333; opacity: 0.9; }
@@ -40,7 +31,6 @@
         .item-title { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
         .item-subtitle { color: #666; font-size: 14px; }
         
-        /* MODAIS */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; }
         .modal { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
         .modal-title { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #333; border-bottom: 2px solid #1976D2; padding-bottom: 10px; }
@@ -59,7 +49,6 @@
         .gerenciar-actions button { background: none; border: none; cursor: pointer; font-size: 20px; margin-left: 10px; }
         .color-preview { display: inline-block; padding: 2px 8px; border-radius: 12px; margin-right: 5px; vertical-align: middle; border: 1px solid #ccc; font-weight: bold; font-size: 12px; }
 
-        /* ESTILOS DA COZINHA E GESTOS */
         .status-pendente { border-left: 8px solid #d32f2f; background-color: #ffebee; }
         .status-fazendo { border-left: 8px solid #fbc02d; background-color: #fffde7; }
         .status-concluido { border-left: 8px solid #9e9e9e; opacity: 0.6; text-decoration: line-through; }
@@ -67,10 +56,10 @@
         .swipe-hint { color: #1976D2; font-size: 24px; font-weight: bold; pointer-events: none; }
         
         .alerta-pisca { animation: bg-pisca 1s infinite; }
-        @keyframes bg-pisca { 0% { background-color: #2e7d32; } 50% { background-color: #d32f2f; } 100% { background-color: #2e7d32; } }
+        @keyframes bg-pisca { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
-<body class="theme-panelas">
+<body>
 
 <div class="app-container">
     <div class="header" id="mainHeader">
@@ -103,7 +92,7 @@
         <div class="modal-title">Acesso Restrito</div>
         <div class="form-group">
             <label>Senha do Administrador:</label>
-            <input type="password" id="senhaAdmin" placeholder="Digite a senha" inputmode="numeric" pattern="[0-9]*" oninput="checarSenhaAutomatica(this)">
+            <input type="password" id="senhaAdmin" placeholder="Digite a senha" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="fecharModal('modalLoginAdmin')">Cancelar</button>
@@ -115,7 +104,7 @@
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
         <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">
-            Pedidos Cozinha - v1.5
+            Pedidos Cozinha - v1.6
         </div>
 
         <h3 style="font-size: 16px; color: #555; margin-bottom: 10px;">Painel de Gestão</h3>
@@ -197,7 +186,6 @@
 <audio id="audioAlerta" loop src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
-    // --- BANCO DE DADOS LOCAL ---
     let db = carregarBanco();
     let categoriaAtual = null;
     let pedidosServidor = [];
@@ -221,11 +209,7 @@
             }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
-        
-        if(local && local.configs && local.configs.modo === 'balcao') {
-            local.configs.modo = 'panelas';
-        }
-        
+        if(local && local.configs && local.configs.modo === 'balcao') { local.configs.modo = 'panelas'; }
         return local || defaultDB;
     }
 
@@ -233,7 +217,17 @@
         localStorage.setItem('kds_v1_db', JSON.stringify(db));
     }
 
-    // --- INICIALIZAÇÃO E CONTROLE VISUAL ---
+    // --- ESCUTA NATIVA DO TECLADO (RESOLVE O PROBLEMA DA SENHA) ---
+    document.getElementById('senhaAdmin').addEventListener('input', function(e) {
+        if(this.value === "1999") {
+            this.blur(); // Recolhe teclado
+            document.getElementById('modalLoginAdmin').style.display = 'none';
+            document.getElementById('configUrlApp').value = db.configs.url || '';
+            document.getElementById('modalPainelUnificado').style.display = 'flex';
+            this.value = ''; // Limpa o campo para a próxima vez
+        }
+    });
+
     function iniciar() {
         document.getElementById('seletorModo').value = db.configs.modo || 'panelas';
         aplicarModoVisual(db.configs.modo || 'panelas');
@@ -245,14 +239,16 @@
         aplicarModoVisual(db.configs.modo);
     }
 
+    // --- TROCA DE COR BRUTA (RESOLVE O PROBLEMA DAS CORES) ---
     function aplicarModoVisual(modo) {
+        const h = document.getElementById('mainHeader');
+        const barraOp = document.getElementById('barraOperador');
         const t = document.getElementById('appTitle');
         const themeColor = document.getElementById('metaThemeColor');
         
-        // A mágica das cores acontece aqui, mudando a classe do body inteiro.
-        document.body.className = modo === 'panelas' ? 'theme-panelas' : 'theme-cozinha';
-        
         if(modo === 'panelas') {
+            h.style.setProperty('background-color', '#1565C0', 'important');
+            barraOp.style.setProperty('background-color', '#1976D2', 'important');
             if(themeColor) themeColor.content = '#1565C0';
             t.innerText = "Panelas";
             
@@ -264,6 +260,8 @@
             renderizarFiltros();
             renderizarListaPanelas();
         } else {
+            h.style.setProperty('background-color', '#2e7d32', 'important');
+            barraOp.style.setProperty('background-color', '#388e3c', 'important');
             if(themeColor) themeColor.content = '#2e7d32';
             t.innerText = "Cozinha";
             
@@ -375,13 +373,10 @@
         const statusAtual = elemento.getAttribute('data-status');
 
         if (Math.abs(diff) < 20) {
-            // CLIQUE SIMPLES
             if(statusAtual === 'pendente') alterarStatusPedido(id, 'fazendo');
         } else if (diff > 80) {
-            // SWIPE DIREITA
             if(statusAtual === 'fazendo' || statusAtual === 'pendente') alterarStatusPedido(id, 'concluido');
         } else if (diff < -80) {
-            // SWIPE ESQUERDA
             if(statusAtual === 'concluido') alterarStatusPedido(id, 'fazendo');
         }
     }
@@ -420,7 +415,7 @@
         alarmeTocando = false;
     }
 
-    // --- FUNÇÕES DE ADMINISTRAÇÃO E SENHA AUTOMÁTICA ---
+    // --- FUNÇÕES DE ADMINISTRAÇÃO E MENUS ---
     function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
 
     function abrirLoginAdmin() {
@@ -429,22 +424,14 @@
         setTimeout(function() { document.getElementById('senhaAdmin').focus(); }, 100);
     }
 
-    // NOVA LÓGICA INFALÍVEL DA SENHA: Checa direto no input
-    function checarSenhaAutomatica(inputField) {
-        if(inputField.value === "1999") {
-            inputField.blur(); // Recolhe o teclado no celular
-            fecharModal('modalLoginAdmin');
-            document.getElementById('configUrlApp').value = db.configs.url || '';
-            document.getElementById('modalPainelUnificado').style.display = 'flex';
-            inputField.value = ''; // Limpa para não atrapalhar no futuro
-        }
-    }
-
-    // Mantido apenas caso o usuário erre e clique no botão manualmente
     function validarSenhaManual() {
         const inputField = document.getElementById('senhaAdmin');
         if(inputField.value === "1999") {
-            checarSenhaAutomatica(inputField);
+            inputField.blur();
+            fecharModal('modalLoginAdmin');
+            document.getElementById('configUrlApp').value = db.configs.url || '';
+            document.getElementById('modalPainelUnificado').style.display = 'flex';
+            inputField.value = '';
         } else {
             alert("Senha incorreta!");
             inputField.value = '';
