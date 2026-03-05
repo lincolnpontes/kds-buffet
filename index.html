@@ -116,7 +116,7 @@
         <div class="modal-title">Alternar Modo</div>
         <div class="form-group">
             <label>Digite a senha de acesso:</label>
-            <input type="password" id="inputSenhaModo" placeholder="Apenas números" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            <input type="password" id="inputSenhaModo" placeholder="Senha do modo" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="cancelarTrocaModo()">Cancelar</button>
@@ -201,7 +201,7 @@
         <h3 style="font-size: 16px; color: #555; margin-top: 25px; margin-bottom: 10px;">Configurações</h3>
         
         <div class="form-group">
-            <label>Senha p/ Trocar de Modo (Apenas números):</label>
+            <label>Senha para Trocar de Modo:</label>
             <input type="password" id="configSenhaModo" placeholder="Deixe em branco para livre" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
 
@@ -236,12 +236,11 @@
         <div class="form-group">
             <label>URL Google Script:</label>
             <input type="text" id="configUrlApp" placeholder="https://script.google.com/macros/s/...">
-            <button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarConfigGerais()">💾 Salvar Configurações</button>
+            <button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Salvar URL e Puxar Dados</button>
         </div>
 
         <div style="display: flex; gap: 10px; margin-bottom: 10px; margin-top: 15px;">
             <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar na Nuvem</button>
-            <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="sincronizarPuxarNuvem(true)">⬇️ Puxar da Nuvem</button>
         </div>
 
         <div class="modal-actions">
@@ -317,7 +316,7 @@
     const sonsDisponiveis = {
         "sem_som": "",
         "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
-        "sino": "https://actions.google.com/sounds/v1/doors/desk_bell.ogg",
+        "sino": "https://actions.google.com/sounds/v1/doors/store_door_chime.ogg", 
         "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg",
         "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
     };
@@ -358,7 +357,6 @@
             if(!local.obsCancelamentos) local.obsCancelamentos = ["Falta de insumo", "Queimou", "Erro no pedido"];
             if(!local.configs) local.configs = defaultDB.configs;
             
-            // Corrige se a config de áudio antiga estava com número
             if(!["sem_som", "beep", "sino", "sino_forte", "alarme"].includes(local.configs.somCozinha)) local.configs.somCozinha = "sem_som";
             if(!["sem_som", "beep", "sino", "sino_forte", "alarme"].includes(local.configs.somPanelas)) local.configs.somPanelas = "sem_som";
             
@@ -813,10 +811,10 @@
         setTimeout(()=>document.getElementById('senhaAdmin').focus(), 100); 
     }
     
-    // --- LÓGICA DE SALVAR E FECHAR O PAINEL ---
+    // --- LÓGICA DE SALVAR URL E AUTO-FETCH ---
     async function sincronizarPuxarNuvem(pedirConfirmacao) {
         if(!db.configs.url) return;
-        if(pedirConfirmacao && !confirm("Você irá sobrepor os dados atuais. Deseja continuar?")) return; 
+        if(pedirConfirmacao && !confirm("Você irá sobrepor os dados locais. Deseja puxar da nuvem?")) return; 
         
         try {
             let res = await fetch(db.configs.url + "?action=carregar_banco");
@@ -828,67 +826,42 @@
                 db.obsCancelamentos = nuvemDB.obsCancelamentos || ["Falta de insumo", "Queimou"];
                 salvarBancoLocal();
                 if(pedirConfirmacao) { alert("Dados puxados com sucesso!"); location.reload(); } else { iniciar(); }
-            } else if(pedirConfirmacao) { alert("Nenhum dado encontrado na nuvem ainda."); }
-        } catch(e) { if(pedirConfirmacao) alert("Erro ao puxar dados da nuvem."); }
+            }
+        } catch(e) { console.log("Erro ao puxar dados da nuvem."); }
     }
 
     async function sincronizarSalvarNuvem() {
-        if(!db.configs.url) return alert("Salve a URL do Google Script primeiro!");
+        if(!db.configs.url) return alert("Salve a URL primeiro!");
         try {
-            document.querySelector('#modalPainelUnificado .btn-action').innerText = "Salvando...";
+            document.querySelector('#modalPainelUnificado .btn-outline').innerText = "Salvando...";
             await fetch(db.configs.url, { 
                 method: 'POST', mode: 'no-cors', 
                 body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos } }) 
             });
             alert("Dados salvos na Nuvem com sucesso!");
         } catch(e) { alert("Erro ao enviar para a nuvem."); }
-        document.querySelector('#modalPainelUnificado .btn-action').innerText = "💾 Salvar Configurações";
+        document.querySelector('#modalPainelUnificado .btn-outline').innerText = "⬆️ Salvar na Nuvem";
     }
 
-    function salvarConfigGerais() {
+    function salvarURL() {
         const urlInput = document.getElementById('configUrlApp').value.trim();
-        const senhaInput = document.getElementById('configSenhaModo').value;
-        const somCozinha = document.getElementById('configSomCozinha').value;
-        const somPanelas = document.getElementById('configSomPanelas').value;
-
         if(urlInput === "") return alert("A URL não pode estar vazia.");
         
         db.configs.url = urlInput; 
-        db.configs.senhaModo = senhaInput;
-        db.configs.somCozinha = somCozinha;
-        db.configs.somPanelas = somPanelas;
-
         salvarBancoLocal(); 
-        alert("✅ Configurações salvas com sucesso!");
-        gerenciarAlarme(); 
+        sincronizarPuxarNuvem(false); // Puxa automático
+        alert("✅ URL salva e dados sincronizados!");
     }
 
+    // --- AUTO-SAVE SILENCIOSO AO FECHAR ---
     function fecharPainelUnificado() {
-        const urlInput = document.getElementById('configUrlApp').value.trim();
-        const senhaInput = document.getElementById('configSenhaModo').value;
-        const somCozinha = document.getElementById('configSomCozinha').value;
-        const somPanelas = document.getElementById('configSomPanelas').value;
-
-        const mudou = urlInput !== (db.configs.url || '') ||
-                      senhaInput !== (db.configs.senhaModo || '') ||
-                      somCozinha !== (db.configs.somCozinha || 'sem_som') ||
-                      somPanelas !== (db.configs.somPanelas || 'sem_som');
-
-        if(mudou) {
-            if(confirm("Você fez alterações nas configurações. Deseja salvar antes de sair?")) {
-                db.configs.url = urlInput; 
-                db.configs.senhaModo = senhaInput;
-                db.configs.somCozinha = somCozinha;
-                db.configs.somPanelas = somPanelas;
-                salvarBancoLocal();
-                gerenciarAlarme();
-            } else {
-                document.getElementById('configUrlApp').value = db.configs.url || '';
-                document.getElementById('configSenhaModo').value = db.configs.senhaModo || '';
-                document.getElementById('configSomCozinha').value = db.configs.somCozinha || 'sem_som';
-                document.getElementById('configSomPanelas').value = db.configs.somPanelas || 'sem_som';
-            }
-        }
+        // Pega os valores atuais dos inputs e salva direto, sem perguntar
+        db.configs.senhaModo = document.getElementById('configSenhaModo').value;
+        db.configs.somCozinha = document.getElementById('configSomCozinha').value;
+        db.configs.somPanelas = document.getElementById('configSomPanelas').value;
+        
+        salvarBancoLocal();
+        gerenciarAlarme(); // Se mudou o som, já reflete no alarme
         
         if(previewAudio) { previewAudio.pause(); } 
         fecharModal('modalPainelUnificado');
