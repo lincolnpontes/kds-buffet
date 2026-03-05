@@ -60,7 +60,6 @@
         .form-group label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; font-size: 14px; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
         
-        /* CORREÇÃO DO BLOCO DE COR */
         .form-group input[type="color"] { height: 45px; padding: 0; cursor: pointer; width: 100%; border: 1px solid #ccc; border-radius: 5px; }
         .form-group input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         .form-group input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
@@ -117,7 +116,7 @@
         <div class="modal-title">Alternar Modo</div>
         <div class="form-group">
             <label>Digite a senha de acesso:</label>
-            <input type="password" id="inputSenhaModo" placeholder="Senha do modo" inputmode="numeric" pattern="[0-9]*">
+            <input type="password" id="inputSenhaModo" placeholder="Apenas números" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="cancelarTrocaModo()">Cancelar</button>
@@ -180,7 +179,7 @@
         <div class="modal-title">Acesso Admin</div>
         <div class="form-group">
             <label>Senha do Administrador:</label>
-            <input type="password" id="senhaAdmin" placeholder="digite a senha" inputmode="numeric" pattern="[0-9]*">
+            <input type="password" id="senhaAdmin" placeholder="digite a senha" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="fecharModal('modalLoginAdmin')">Cancelar</button>
@@ -202,19 +201,20 @@
         <h3 style="font-size: 16px; color: #555; margin-top: 25px; margin-bottom: 10px;">Configurações</h3>
         
         <div class="form-group">
-            <label>Senha para Trocar de Modo (opcional):</label>
-            <input type="text" id="configSenhaModo" placeholder="Deixe em branco para livre">
+            <label>Senha p/ Trocar de Modo (Apenas números):</label>
+            <input type="password" id="configSenhaModo" placeholder="Deixe em branco para livre" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
 
         <div class="form-group">
             <label>Som Cozinha (Novo Pedido):</label>
             <div style="display:flex; gap:10px;">
                 <select id="configSomCozinha" style="flex:1;">
-                    <option value="1">1. Beep Clássico</option>
-                    <option value="2">2. Toque Bugle</option>
-                    <option value="3">3. Relógio Digital</option>
-                    <option value="4">4. Sino Mecânico</option>
-                    <option value="5">5. Campainha</option>
+                    <option value="sem_som">Sem som</option>
+                    <option value="beep">Beep Clássico</option>
+                    <option value="bugle">Toque Bugle</option>
+                    <option value="relogio">Relógio Digital</option>
+                    <option value="alarme">Alarme Curto</option>
+                    <option value="campainha">Campainha</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomCozinha')">▶️</button>
             </div>
@@ -224,11 +224,12 @@
             <label>Som Panelas (Atenção/Cancelado):</label>
             <div style="display:flex; gap:10px;">
                 <select id="configSomPanelas" style="flex:1;">
-                    <option value="1">1. Beep Clássico</option>
-                    <option value="2">2. Toque Bugle</option>
-                    <option value="3">3. Relógio Digital</option>
-                    <option value="4">4. Sino Mecânico</option>
-                    <option value="5">5. Campainha</option>
+                    <option value="sem_som">Sem som</option>
+                    <option value="beep">Beep Clássico</option>
+                    <option value="bugle">Toque Bugle</option>
+                    <option value="relogio">Relógio Digital</option>
+                    <option value="alarme">Alarme Curto</option>
+                    <option value="campainha">Campainha</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomPanelas')">▶️</button>
             </div>
@@ -246,7 +247,7 @@
         </div>
 
         <div class="modal-actions">
-            <button class="btn-cancel" onclick="fecharModal('modalPainelUnificado')">Fechar Painel</button>
+            <button class="btn-cancel" onclick="fecharPainelUnificado()">Fechar Painel</button>
         </div>
     </div>
 </div>
@@ -257,7 +258,7 @@
         <button class="btn-action" id="btnNovoListagem" style="width: 100%; margin-bottom: 15px;">+ Novo</button>
         <div id="conteudoListagem" style="max-height: 50vh; overflow-y: auto; padding-right: 5px;"></div>
         <div class="modal-actions">
-            <button class="btn-cancel" onclick="voltarPainelUnificado()">Voltar</button>
+            <button class="btn-cancel" onclick="voltarParaPainelGeral()">Voltar</button>
         </div>
     </div>
 </div>
@@ -316,20 +317,34 @@
 
     // --- GERENCIAMENTO DE ÁUDIO ---
     const sonsDisponiveis = {
-        "1": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
-        "2": "https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg",
-        "3": "https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg",
-        "4": "https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg",
-        "5": "https://actions.google.com/sounds/v1/doors/doorbell_chime.ogg"
+        "sem_som": "",
+        "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
+        "bugle": "https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg",
+        "relogio": "https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg",
+        "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
+        "campainha": "https://actions.google.com/sounds/v1/doors/front_doorbell_ring.ogg"
     };
+    
     let playerAlarme = new Audio();
     playerAlarme.loop = true;
     let alarmeTocando = false;
+    let previewAudio = null;
+    let previewTimeout = null;
 
     function tocarPreview(selectId) {
+        if(previewAudio) { previewAudio.pause(); previewAudio.currentTime = 0; }
+        if(previewTimeout) { clearTimeout(previewTimeout); }
+        
         let val = document.getElementById(selectId).value;
-        let p = new Audio(sonsDisponiveis[val]);
-        p.play().catch(()=>{});
+        if(val === "sem_som") return;
+        
+        previewAudio = new Audio(sonsDisponiveis[val]);
+        previewAudio.play().catch(()=>{});
+        
+        // Desliga o preview à força depois de 3 segundos
+        previewTimeout = setTimeout(() => {
+            if(previewAudio) { previewAudio.pause(); }
+        }, 3000);
     }
 
     function carregarBanco() {
@@ -338,7 +353,7 @@
             categorias: [{ nome: "Geral", cor: "#fff0b3", corTexto: "#000000" }],
             obsPedidos: ["Sem sal", "Pouco óleo", "Urgente"],
             obsCancelamentos: ["Falta de insumo", "Queimou", "Erro no pedido"],
-            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "1", somPanelas: "1" }
+            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som" }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
         if(local) {
@@ -346,8 +361,11 @@
             if(!local.obsPedidos) local.obsPedidos = ["Sem sal", "Pouco óleo", "Urgente"];
             if(!local.obsCancelamentos) local.obsCancelamentos = ["Falta de insumo", "Queimou", "Erro no pedido"];
             if(!local.configs) local.configs = defaultDB.configs;
-            if(!local.configs.somCozinha) local.configs.somCozinha = "1";
-            if(!local.configs.somPanelas) local.configs.somPanelas = "1";
+            // Migração de números para os novos nomes
+            if(["1","2","3","4","5"].includes(local.configs.somCozinha)) local.configs.somCozinha = "sem_som";
+            if(["1","2","3","4","5"].includes(local.configs.somPanelas)) local.configs.somPanelas = "sem_som";
+            if(!local.configs.somCozinha) local.configs.somCozinha = "sem_som";
+            if(!local.configs.somPanelas) local.configs.somPanelas = "sem_som";
             if(local.configs.modo === 'balcao') local.configs.modo = 'panelas';
         }
         return local || defaultDB;
@@ -371,8 +389,6 @@
             document.getElementById('inputSenhaModo').value = '';
             document.getElementById('modalSenhaModo').style.display = 'flex';
             setTimeout(() => document.getElementById('inputSenhaModo').focus(), 100);
-            
-            // Volta visualmente para o antigo até confirmar a senha
             selectElement.value = db.configs.modo; 
         } else {
             efetivarTrocaModo(novoModo);
@@ -541,14 +557,14 @@
             if(db.configs.modo === 'cozinha') { renderizarListaCozinha(); } 
             else { renderizarUltimosPedidos(); }
             
-            gerenciarAlarme(); // Centralizei a gestão de alarme para ambos os lados
+            gerenciarAlarme();
         } catch(e) { console.log("Aguardando conexão..."); }
     }
 
     function darCiencia(id) {
         pedidosCientes.add(id.toString());
         renderizarUltimosPedidos();
-        gerenciarAlarme(); // Checa se pode desligar o alarme
+        gerenciarAlarme(); 
     }
 
     function renderizarUltimosPedidos() {
@@ -711,36 +727,42 @@
           .catch(() => pedidosBloqueados.delete(id.toString()));
     }
 
-    // --- ALARMES UNIFICADOS ---
+    // --- ALARMES UNIFICADOS E INTELIGENTES ---
     function gerenciarAlarme() {
         let deveTocar = false;
-        let configSom = "1";
+        let configSom = "sem_som";
         const h = document.getElementById('mainHeader');
         h.classList.remove('alerta-pisca', 'alerta-pisca-buscar');
 
         if (db.configs.modo === 'cozinha') {
             const temPendente = pedidosServidor.some(p => p.status === 'pendente');
             if(temPendente) {
-                deveTocar = true;
-                configSom = db.configs.somCozinha || "1";
                 h.classList.add('alerta-pisca');
+                if(db.configs.somCozinha !== "sem_som") {
+                    deveTocar = true;
+                    configSom = db.configs.somCozinha;
+                }
             }
         } else if (db.configs.modo === 'panelas') {
+            const agora = Date.now();
             const temAlertaPanelas = pedidosServidor.some(p => {
-                if(p.status === 'buscar' || p.status === 'cancelado') {
+                const ehRecente = (agora - new Date(p.finalizadoEm).getTime()) < 300000;
+                if(ehRecente && (p.status === 'buscar' || p.status === 'cancelado')) {
                     return !pedidosCientes.has(p.id.toString());
                 }
                 return false;
             });
+            
             if(temAlertaPanelas) {
-                deveTocar = true;
-                configSom = db.configs.somPanelas || "1";
                 h.classList.add('alerta-pisca-buscar');
+                if(db.configs.somPanelas !== "sem_som") {
+                    deveTocar = true;
+                    configSom = db.configs.somPanelas;
+                }
             }
         }
 
         if (deveTocar) {
-            // Se já não estiver tocando OU se for preciso trocar a música do alarme em tempo real
             if (!alarmeTocando || playerAlarme.src !== sonsDisponiveis[configSom]) {
                 playerAlarme.src = sonsDisponiveis[configSom];
                 playerAlarme.play().catch(()=>{});
@@ -789,7 +811,7 @@
         setTimeout(()=>document.getElementById('senhaAdmin').focus(), 100); 
     }
     
-    // --- SALVAR CONFIGS DO PAINEL ADMIN ---
+    // --- LÓGICA DE SALVAR E FECHAR O PAINEL ---
     function salvarConfigGerais() {
         const urlInput = document.getElementById('configUrlApp').value.trim();
         const senhaInput = document.getElementById('configSenhaModo').value;
@@ -798,22 +820,49 @@
 
         if(urlInput === "") return alert("A URL não pode estar vazia.");
         
-        let primeiraVez = (db.configs.url === "");
         db.configs.url = urlInput; 
         db.configs.senhaModo = senhaInput;
         db.configs.somCozinha = somCozinha;
         db.configs.somPanelas = somPanelas;
 
         salvarBancoLocal(); 
-        
-        if(primeiraVez) { 
-            sincronizarPuxarNuvem(false); 
-        } else { 
-            alert("✅ Configurações salvas com sucesso!"); 
+        alert("✅ Configurações salvas com sucesso!");
+        gerenciarAlarme(); // Atualiza em tempo real se o som foi removido
+    }
+
+    function fecharPainelUnificado() {
+        const urlInput = document.getElementById('configUrlApp').value.trim();
+        const senhaInput = document.getElementById('configSenhaModo').value;
+        const somCozinha = document.getElementById('configSomCozinha').value;
+        const somPanelas = document.getElementById('configSomPanelas').value;
+
+        const mudou = urlInput !== (db.configs.url || '') ||
+                      senhaInput !== (db.configs.senhaModo || '') ||
+                      somCozinha !== (db.configs.somCozinha || 'sem_som') ||
+                      somPanelas !== (db.configs.somPanelas || 'sem_som');
+
+        if(mudou) {
+            if(confirm("Você fez alterações nas configurações. Deseja salvar antes de sair?")) {
+                db.configs.url = urlInput; 
+                db.configs.senhaModo = senhaInput;
+                db.configs.somCozinha = somCozinha;
+                db.configs.somPanelas = somPanelas;
+                salvarBancoLocal();
+                gerenciarAlarme();
+            } else {
+                // Reverte visualmente para o antigo se ele não salvou
+                document.getElementById('configUrlApp').value = db.configs.url || '';
+                document.getElementById('configSenhaModo').value = db.configs.senhaModo || '';
+                document.getElementById('configSomCozinha').value = db.configs.somCozinha || 'sem_som';
+                document.getElementById('configSomPanelas').value = db.configs.somPanelas || 'sem_som';
+            }
         }
+        
+        if(previewAudio) { previewAudio.pause(); } // Garante que o preview pare ao sair
+        fecharModal('modalPainelUnificado');
     }
     
-    function voltarPainelUnificado() { fecharModal('modalListagem'); document.getElementById('modalPainelUnificado').style.display = 'flex'; }
+    function voltarParaPainelGeral() { fecharModal('modalListagem'); document.getElementById('modalPainelUnificado').style.display = 'flex'; }
 
     function moverItem(tipo, index, direcao) {
         const lista = tipo === 'produtos' ? db.produtos : (tipo === 'categorias' ? db.categorias : (tipo === 'obsPedidos' ? db.obsPedidos : db.obsCancelamentos));
@@ -894,22 +943,18 @@
         salvarBancoLocal(); iniciar(); abrirGerenciar('categorias');
     }
 
-    // Ao carregar a página do Admin, também carrega as configs nos inputs
     document.getElementById('senhaAdmin').addEventListener('input', function(e) {
         if(this.value === "1999") {
             this.blur(); document.getElementById('modalLoginAdmin').style.display = 'none';
             document.getElementById('configUrlApp').value = db.configs.url || '';
             document.getElementById('configSenhaModo').value = db.configs.senhaModo || '';
-            document.getElementById('configSomCozinha').value = db.configs.somCozinha || '1';
-            document.getElementById('configSomPanelas').value = db.configs.somPanelas || '1';
+            document.getElementById('configSomCozinha').value = db.configs.somCozinha || 'sem_som';
+            document.getElementById('configSomPanelas').value = db.configs.somPanelas || 'sem_som';
             document.getElementById('modalPainelUnificado').style.display = 'flex'; this.value = ''; 
         }
     });
 
-    // Iniciar a aplicação
     iniciar();
 </script>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXX"></script>
-<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-XXXXX');</script>
 </body>
 </html>
