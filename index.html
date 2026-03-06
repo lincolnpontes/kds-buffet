@@ -14,9 +14,9 @@
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; }
         .app-container { width: 100%; max-width: 500px; background-color: #ffffff; height: 100vh; display: flex; flex-direction: column; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
         
-        /* TELA DE CARREGAMENTO */
+        /* TELA DE CARREGAMENTO COM IMAGEM */
         #splashScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #1565C0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease; }
-        .splash-icone { font-size: 80px; margin-bottom: 20px; }
+        .splash-icone { width: 120px; height: 120px; margin-bottom: 20px; border-radius: 25%; object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.3); background-color: #fff; }
         .splash-titulo { font-size: 32px; font-weight: bold; margin-bottom: 5px; }
         .splash-versao { font-size: 16px; opacity: 0.8; }
 
@@ -24,8 +24,8 @@
         .header-select { background: transparent; color: white; border: none; font-size: 20px; font-weight: bold; outline: none; -webkit-appearance: none; appearance: none; padding-right: 5px; }
         .header-select option { color: black; font-size: 16px; }
         
-        /* TEXTO DE DICAS COZINHA NO HEADER */
-        .dicas-cozinha { display: none; font-size: 10px; line-height: 1.3; text-align: right; flex: 1; opacity: 0.9; margin-right: 10px; white-space: nowrap; }
+        /* TEXTO DE DICAS COZINHA NO HEADER MAIOR */
+        .dicas-cozinha { display: none; font-size: 12px; line-height: 1.4; text-align: right; flex: 1; opacity: 0.95; margin-right: 10px; white-space: nowrap; }
 
         .header-actions button { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
         
@@ -40,7 +40,6 @@
         .chip.active { border: 2px solid #333; opacity: 0.9; }
         
         .list { padding: 0; margin: 0; list-style: none; padding-bottom: 20px; }
-        /* ITEM REDUZIDO NA ALTURA */
         .item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: transform 0.2s; overflow: hidden; }
         .item:active { background-color: #e3f2fd; }
         .item-avatar { background-color: #BBDEFB; color: #1565C0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; min-width: 40px; flex-shrink: 0; }
@@ -91,7 +90,7 @@
 <body class="theme-panelas">
 
 <div id="splashScreen">
-    <div class="splash-icone">🍲</div>
+    <img src="icon.png" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
     <div class="splash-versao">v1.1</div>
 </div>
@@ -104,7 +103,7 @@
         </select>
         
         <div id="dicasCozinha" class="dicas-cozinha">
-            👉 Deslize: Enviado<br>👆 Segure: Buscar<br>✌️ 2x: Cancelar
+            👉 Deslize: Enviado<br>👆 Segure: Buscar<br>✌️ Toque 2x: Cancelar
         </div>
 
         <div class="header-actions">
@@ -394,12 +393,13 @@
         localStorage.setItem('kds_v1_db', JSON.stringify(db));
     }
 
-    // --- FUNÇÃO TEMPO RELATIVO ---
+    // --- FUNÇÃO TEMPO RELATIVO COM &lt; PARA NÃO BUGAR O HTML ---
     function getTempoRelativo(timestamp) {
         const diffEmMs = Date.now() - new Date(timestamp).getTime();
         const minutos = Math.floor(diffEmMs / 60000);
         
-        if (minutos < 1) return "há menos de 1 minuto";
+        // Usando &lt; ao invés de < para não quebrar a injeção do HTML
+        if (minutos < 1) return "&lt; 1 minuto";
         if (minutos === 1) return "há 1 minuto";
         return `há ${minutos} minutos`;
     }
@@ -452,7 +452,7 @@
         document.getElementById('seletorModo').value = db.configs.modo || 'panelas';
         aplicarModoVisual(db.configs.modo || 'panelas');
         
-        // SPLASH SCREEN LOGIC (APENAS 1 VEZ POR SESSÃO)
+        // SPLASH SCREEN LOGIC
         const splash = document.getElementById('splashScreen');
         if (!sessionStorage.getItem('splash_v11_shown')) {
             setTimeout(() => {
@@ -460,8 +460,8 @@
                 setTimeout(() => {
                     splash.style.display = 'none';
                     sessionStorage.setItem('splash_v11_shown', 'true');
-                }, 500); // tempo do fade
-            }, 2000); // 2 segundos segurando a logo
+                }, 500); 
+            }, 2000); 
         } else {
             splash.style.display = 'none';
         }
@@ -695,7 +695,6 @@
                 }
             } else { statusTraduzido = 'Finalizado'; corStatus = '#9e9e9e'; exibirTempo = false; }
 
-            // Lógica do tempo relativo (se aplicável)
             let textoTempo = exibirTempo ? ` - ${getTempoRelativo(p.timestamp)}` : '';
 
             lista.innerHTML += `
@@ -730,7 +729,6 @@
             
             let cssStatus = isFinal ? (p.status==='cancelado' ? 'cancelado' : 'concluido') : p.status;
             
-            // Lógica de exibir tempo apenas se não for finalizado
             let tempoStr = "";
             if (!isFinal) {
                 tempoStr = getTempoRelativo(p.timestamp);
@@ -878,7 +876,6 @@
                 let statusTxt = p.status === 'pendente' ? 'Pendente' : (p.status === 'fazendo' ? 'Em preparo' : (p.status === 'enviado' ? 'Enviado' : (p.status === 'buscar' ? 'Buscar' : (p.status === 'cancelado' ? 'Cancelado' : 'Finalizado'))));
                 if(p.status === 'cancelado' && p.motivo) statusTxt += ` (Motivo: ${p.motivo})`;
                 
-                // No histórico mantemos a hora exata para fins de auditoria
                 lista.innerHTML += `
                     <li class="item" style="padding: 10px; border-bottom: 1px solid #eee;">
                         <div class="item-info">
