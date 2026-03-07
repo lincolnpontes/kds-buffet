@@ -46,7 +46,6 @@
         .item-title { font-weight: bold; font-size: 18px; margin-bottom: 2px; }
         .item-subtitle { color: #666; font-size: 13px; line-height: 1.4; }
 
-        /* MUDANÇA: O texto riscado agora só vai pro elemento com a classe .riscar */
         .riscar { text-decoration: line-through; opacity: 0.6; }
         .status-pendente { border-left: 8px solid #d32f2f; background-color: #ffebee; }
         .status-fazendo { border-left: 8px solid #fbc02d; background-color: #fffde7; }
@@ -238,12 +237,7 @@
         <div class="form-group"><label>Senha para Trocar de Modo:</label><input type="password" id="configSenhaModo" placeholder="Deixe em branco para livre" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
         <div class="form-group"><label>Som Cozinha (Novo Pedido):</label><div style="display:flex; gap:10px;"><select id="configSomCozinha" style="flex:1;"><option value="sem_som">Sem som</option><option value="beep">Beep Clássico</option><option value="sino">Sino de Jantar</option><option value="sino_forte">Sino Forte</option><option value="alarme">Alarme Curto</option></select><button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomCozinha')">▶️</button></div></div>
         <div class="form-group"><label>Som Panelas (Atenção/Cancelado):</label><div style="display:flex; gap:10px;"><select id="configSomPanelas" style="flex:1;"><option value="sem_som">Sem som</option><option value="beep">Beep Clássico</option><option value="sino">Sino de Jantar</option><option value="sino_forte">Sino Forte</option><option value="alarme">Alarme Curto</option></select><button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomPanelas')">▶️</button></div></div>
-        <div class="form-group"><label>URL Google Script:</label><input type="text" id="configUrlApp" placeholder="https://script.google.com/macros/s/..."><button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Salvar URL e Puxar Dados</button></div>
         
-        <div style="display: flex; gap: 10px; margin-bottom: 10px; margin-top: 15px;">
-            <button id="btnSalvarNuvem" class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar na Nuvem</button>
-        </div>
-
         <h3 style="font-size: 16px; color: #d32f2f; margin-top: 25px; margin-bottom: 10px;">Avançado</h3>
         <button class="btn-danger" onclick="solicitarAcessoAvancado()">⚠️ Configurações Avançadas</button>
 
@@ -254,12 +248,24 @@
 </div>
 
 <div class="modal-overlay" id="modalConfigAvancadas">
-    <div class="modal">
+    <div class="modal" style="max-height: 90vh; overflow-y: auto;">
         <div class="modal-title" style="color:#d32f2f;">Zona de Risco</div>
-        <p style="font-size: 14px; color: #555;">Atenção: As ações aqui são irreversíveis e afetam o servidor.</p>
         
-        <div class="form-group" style="margin-top: 20px;">
-            <label>Para apagar tudo, digite abaixo: <b>quero excluir todo o histórico</b></label>
+        <h3 style="font-size: 15px; color: #333; margin-top: 0; margin-bottom: 10px;">Sincronização e Nuvem</h3>
+        <div class="form-group">
+            <label>URL Google Script:</label>
+            <input type="text" id="configUrlApp" placeholder="https://script.google.com/macros/s/...">
+            <button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Salvar URL e Puxar Dados</button>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button id="btnSalvarNuvem" class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px; border-color:#2e7d32; color:#2e7d32;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar Cardápio na Nuvem</button>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+        <p style="font-size: 13px; color: #555; margin-bottom: 5px;">Atenção: A ação abaixo é irreversível.</p>
+        <div class="form-group">
+            <label>Para apagar todos os pedidos, digite: <b>quero excluir todo o histórico</b></label>
             <input type="text" id="inputExcluirTudo" placeholder="digite a frase exata">
             <button class="btn-danger" style="margin-top: 10px;" onclick="excluirTodoHistorico()">🗑️ Apagar Todo o Histórico</button>
         </div>
@@ -278,7 +284,7 @@
 </div>
 
 <div class="modal-overlay" id="modalMetricas">
-    <div class="modal" style="display:flex; flex-direction:column; max-height: 90vh;">
+    <div class="modal" style="display:flex; flex-direction:column; max-height: 90vh; width: 95%;">
         <div class="modal-title">Detalhes da Produção</div>
         
         <div style="display:flex; gap:5px; margin-bottom:10px; flex-wrap: wrap;">
@@ -330,6 +336,9 @@
     let pedidosPendentesLocais = []; 
     let loopSync = null;
     let wakeLock = null; 
+
+    // Hierarquia de status para garantir que o cliente prevaleça e evite o "efeito fantasma"
+    const hierarquiaStatus = { 'pendente': 1, 'fazendo': 2, 'enviado': 3, 'buscar': 3, 'cancelado': 4, 'concluido': 5 };
 
     const sonsDisponiveis = { "sem_som": "", "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg", "sino": "https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg", "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg", "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" };
     let playerAlarme = new Audio(); playerAlarme.loop = true; let alarmeTocando = false; let previewAudio = null; let previewTimeout = null;
@@ -405,7 +414,7 @@
     }
 
     function abrirModalPedido(nomeProduto) {
-        if(!db.configs.url) return alert("URL não configurada! Vá na engrenagem ⚙️");
+        if(!db.configs.url) return alert("URL não configurada! Vá na engrenagem ⚙️ > Avançadas");
         document.getElementById('tituloModalPedido').innerText = `Pedir: ${nomeProduto}`; document.getElementById('pedidoItemNome').value = nomeProduto; document.getElementById('pedidoObsText').value = '';
         const container = document.getElementById('obsChipsContainer'); container.innerHTML = '';
         db.obsPedidos.forEach(obs => { container.innerHTML += `<div class="chip" style="font-weight: normal; background-color:#E3F2FD; color:#1565C0; border-color:#1565C0;" onclick="addObsToText('pedidoObsText', '${obs}')">${obs}</div>`; });
@@ -454,7 +463,6 @@
         if(pedidoLocal) { pedidoLocal.status = 'cancelado'; pedidoLocal.motivo = motivo; pedidoLocal.finalizadoEm = new Date().toISOString(); }
         renderizarListaCozinha();
 
-        // MUDANÇA: Aumentei o tempo de bloqueio para 15 segundos para evitar o efeito elástico
         fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'cancelar_pedido', id: id, motivo: motivo }) })
         .then(() => setTimeout(() => pedidosBloqueados.delete(id.toString()), 15000))
         .catch(() => pedidosBloqueados.delete(id.toString()));
@@ -474,10 +482,20 @@
 
             let mixPedidos = dadosServidor.concat(pedidosPendentesLocais);
 
+            // A MÁGICA DO "A COZINHA MANDA" (O Operador tem prioridade sobre o Servidor atrasado)
             pedidosServidor = mixPedidos.map(pServ => {
-                if(pedidosBloqueados.has(pServ.id.toString())) {
-                    let pLocal = pedidosServidor.find(x => x.id == pServ.id);
-                    return pLocal ? pLocal : pServ;
+                let pLocal = pedidosServidor.find(x => x.id == pServ.id);
+                if (pLocal) {
+                    // Se estiver no bloqueio de 15s recente, ignora o servidor
+                    if (pedidosBloqueados.has(pServ.id.toString())) { return pLocal; }
+                    
+                    // Se o status local for MAIOR na hierarquia, ignora o downgrade do servidor
+                    let pesoLocal = hierarquiaStatus[pLocal.status] || 0;
+                    let pesoServidor = hierarquiaStatus[pServ.status] || 0;
+                    
+                    if (pesoLocal > pesoServidor) {
+                        return pLocal; // O app da cozinha recusa o retrocesso
+                    }
                 }
                 return pServ;
             });
@@ -540,7 +558,7 @@
             
             if (p.status === 'pendente') { 
                 emoji = '🔔'; 
-                acaoTxt = '👆 Toque para aceitar'; // MUDANÇA 1: Mensagem restaurada
+                acaoTxt = '👆 Toque para aceitar'; 
                 tempoStr = getTempoRelativo(p.timestamp);
             } 
             else if (p.status === 'fazendo') { 
@@ -562,7 +580,6 @@
             
             let cssStatus = isFinal ? (p.status==='cancelado' ? 'cancelado' : 'concluido') : p.status;
             
-            // MUDANÇA 2: O Entregue agora se atualiza dinamicamente usando a mesma função de cálculo de tempo
             if (isFinal && p.finalizadoEm && p.status !== 'cancelado') {
                 tempoStr = `Entregue ${getTempoRelativo(p.finalizadoEm)}`;
             } else if (p.status === 'cancelado') {
@@ -571,7 +588,6 @@
 
             let subtitleHtml = acaoTxt ? `<div class="item-subtitle" style="text-decoration: none !important; opacity: 1 !important;">${acaoTxt}</div>` : '';
 
-            // Note que apliquei a 'classeRiscar' APENAS no avatar e no item-title
             lista.innerHTML += `
                 <li class="item status-${cssStatus}" id="ped-${p.id}" data-id="${p.id}" data-status="${p.status}" data-nome="${p.produto}" ontouchstart="handleTouchStart(event, this)" ontouchmove="handleTouchMove(event)" ontouchend="handleTouchEnd(event, this)">
                     <div class="item-avatar ${classeRiscar}" style="background:transparent; font-size:24px; margin-right: 10px;">${emoji}</div>
@@ -604,7 +620,6 @@
         if(pedidoLocal) { pedidoLocal.status = novoStatus; if(novoStatus === 'enviado' || novoStatus === 'buscar' || novoStatus === 'concluido') pedidoLocal.finalizadoEm = new Date().toISOString(); }
         renderizarListaCozinha();
         
-        // MUDANÇA 4: Bloqueio estendido para 15 segundos para evitar o "retorno fantasma"
         fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'atualizar_status', id: id, novoStatus: novoStatus }) })
         .then(() => setTimeout(() => pedidosBloqueados.delete(id.toString()), 15000))
         .catch(() => pedidosBloqueados.delete(id.toString()));
@@ -682,7 +697,6 @@
 
     function forcarAtualizacao() { localStorage.removeItem('kds_v1_db'); sessionStorage.clear(); window.location.reload(true); }
 
-    // --- MUDANÇA 3: RELATÓRIOS EXPANSIVOS E FILTROS DE DATA ---
     function abrirModalMetricas() {
         fecharModal('modalPainelUnificado');
         document.getElementById('boxFiltroCustom').style.display = 'none';
@@ -716,7 +730,6 @@
             const dtFim = document.getElementById('filtroDataFim').value;
             if(!dtIni || !dtFim) return alert("Selecione a data de início e fim.");
             
-            // Corrige fuso horário local para o input type=date
             let dI = new Date(dtIni); dI.setMinutes(dI.getMinutes() + dI.getTimezoneOffset()); dI.setHours(0,0,0,0);
             let dF = new Date(dtFim); dF.setMinutes(dF.getMinutes() + dF.getTimezoneOffset()); dF.setHours(23,59,59,999);
             timeInicio = dI.getTime(); timeFim = dF.getTime();
@@ -738,7 +751,12 @@
                     let minutos = Math.floor((new Date(p.finalizadoEm).getTime() - dataPedTime) / 60000);
                     stats[nomeBase].tempoTotal += minutos;
                     stats[nomeBase].countTempo++;
-                    stats[nomeBase].temposIndividuais.push(minutos);
+                    
+                    // Salvando os minutos e a data formatada
+                    stats[nomeBase].temposIndividuais.push({
+                        minutos: minutos,
+                        dataStr: new Date(dataPedTime).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})
+                    });
                 }
             }
         });
@@ -760,30 +778,36 @@
             let tempoStr = media < 1 ? "&lt; 1 min" : `${media} min`;
             if(item.countTempo === 0) tempoStr = "-"; 
 
-            // Monta as tags coloridas para os tempos individuais
+            // Montando a listagem com Data, Hora e o Tempo
             let tagsHtml = item.temposIndividuais.map(t => {
-                let corBg = t <= 15 ? '#c8e6c9' : (t <= 30 ? '#fff9c4' : '#ffcdd2');
-                let corTx = t <= 15 ? '#2e7d32' : (t <= 30 ? '#f57f17' : '#c62828');
-                return `<span style="display:inline-block; background:${corBg}; color:${corTx}; border-radius:4px; padding:3px 6px; margin:2px; font-size:11px; font-weight:bold;">${t < 1 ? '<1' : t}m</span>`;
+                let corBg = t.minutos <= 15 ? '#c8e6c9' : (t.minutos <= 30 ? '#fff9c4' : '#ffcdd2');
+                let corTx = t.minutos <= 15 ? '#2e7d32' : (t.minutos <= 30 ? '#f57f17' : '#c62828');
+                let minStr = t.minutos < 1 ? '<1m' : t.minutos + 'm';
+                
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px 10px; margin-bottom: 4px; border-radius: 4px; border: 1px solid #eee;">
+                        <span style="font-size:12px; color:#555; font-weight: bold;">📅 ${t.dataStr}</span>
+                        <span style="display:inline-block; background:${corBg}; color:${corTx}; border-radius:4px; padding:3px 8px; font-size:12px; font-weight:bold;">⏱️ ${minStr}</span>
+                    </div>
+                `;
             }).join('');
             
-            if(tagsHtml === '') tagsHtml = '<span style="font-size:11px; color:#999;">Sem histórico finalizado</span>';
+            if(tagsHtml === '') tagsHtml = '<div style="font-size:12px; color:#999; padding: 5px;">Sem histórico finalizado</div>';
 
             lista.innerHTML += `
                 <li class="item" style="padding: 10px; border-bottom: 1px solid #eee; flex-direction:column; align-items:stretch; cursor:pointer;" onclick="document.getElementById('det-${idx}').style.display = document.getElementById('det-${idx}').style.display === 'none' ? 'block' : 'none'">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="flex:1;">
                             <strong style="font-size:14px; color:#333;">${item.nome}</strong>
-                            <div style="font-size:11px; color:#1976D2; margin-top:2px;">+ ver tempos</div>
+                            <div style="font-size:12px; color:#1976D2; margin-top:2px; font-weight: bold;">+ ver tempos</div>
                         </div>
                         <div style="text-align:right; font-size:13px; color:#555;">
                             <span style="display:inline-block; width:40px; text-align:center; background:#e0e0e0; border-radius:10px; padding:2px 5px; font-weight:bold;">${item.qtd}x</span>
                             <span style="display:inline-block; width:65px; text-align:right; color:#2e7d32; font-weight:bold;">⏱️ ${tempoStr}</span>
                         </div>
                     </div>
-                    <div id="det-${idx}" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #ccc;">
-                        <div style="font-size:11px; color:#666; margin-bottom:5px;">Tempos em cada pedido:</div>
-                        <div style="display:flex; flex-wrap:wrap;">${tagsHtml}</div>
+                    <div id="det-${idx}" style="display:none; margin-top:10px; padding:10px; background: #f9f9f9; border-radius: 5px;">
+                        ${tagsHtml}
                     </div>
                 </li>
             `;
@@ -797,11 +821,11 @@
             if(btn) btn.innerText = "Salvando..."; 
             await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos } }) }); 
             alert("Salvo na Nuvem com sucesso!"); 
-            if(btn) btn.innerText = "⬆️ Salvar na Nuvem";
+            if(btn) btn.innerText = "⬆️ Salvar Cardápio na Nuvem";
         } catch(e) { 
             alert("Erro de conexão ao salvar."); 
             const btn = document.getElementById('btnSalvarNuvem');
-            if(btn) btn.innerText = "⬆️ Salvar na Nuvem";
+            if(btn) btn.innerText = "⬆️ Salvar Cardápio na Nuvem";
         } 
     }
 
@@ -838,6 +862,7 @@
     function abrirFormCategoria(idx) { fecharModal('modalListagem'); if(idx >= 0) { const c = db.categorias[idx]; document.getElementById('catIndexOriginal').value = idx; document.getElementById('catNome').value = c.nome; document.getElementById('catCor').value = c.cor; document.getElementById('catCorTexto').value = c.corTexto || '#000000'; } else { document.getElementById('catIndexOriginal').value = '-1'; document.getElementById('catNome').value = ''; document.getElementById('catCor').value = '#1976D2'; document.getElementById('catCorTexto').value = '#ffffff'; } document.getElementById('modalFormCategoria').style.display = 'flex'; }
     function salvarCategoria() { const idx = parseInt(document.getElementById('catIndexOriginal').value); const nome = document.getElementById('catNome').value.trim(); const cor = document.getElementById('catCor').value; const corTexto = document.getElementById('catCorTexto').value; if(!nome) return alert("Preencha o nome!"); if(idx >= 0) { const nomeAntigo = db.categorias[idx].nome; db.categorias[idx] = { nome, cor, corTexto }; db.produtos.forEach(p => { if(p.categoria === nomeAntigo) p.categoria = nome; }); } else { db.categorias.push({ nome, cor, corTexto }); } salvarBancoLocal(); iniciar(); abrirGerenciar('categorias'); }
 
+    // Login com o 1999 instantâneo intocado
     document.getElementById('senhaAdmin').addEventListener('input', function(e) {
         if(this.value === "1999") { this.blur(); document.getElementById('modalLoginAdmin').style.display = 'none'; document.getElementById('configUrlApp').value = db.configs.url || ''; document.getElementById('configSenhaModo').value = db.configs.senhaModo || ''; document.getElementById('configSomCozinha').value = db.configs.somCozinha || 'sem_som'; document.getElementById('configSomPanelas').value = db.configs.somPanelas || 'sem_som'; document.getElementById('modalPainelUnificado').style.display = 'flex'; this.value = ''; }
     });
