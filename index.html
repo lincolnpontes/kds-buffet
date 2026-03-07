@@ -221,6 +221,19 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="modalSenhaAvancada">
+    <div class="modal">
+        <div class="modal-title" style="color:#d32f2f;">Acesso Restrito</div>
+        <div class="form-group">
+            <label>Senha do Administrador:</label>
+            <input type="password" id="senhaAvancada" placeholder="digite a senha" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalSenhaAvancada')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
         <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.0</div>
@@ -258,7 +271,7 @@
             <button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Salvar URL e Puxar Dados</button>
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button id="btnSalvarNuvem" class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px; border-color:#2e7d32; color:#2e7d32;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar Cardápio na Nuvem</button>
+            <button id="btnSalvarNuvem" class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px; border-color:#2e7d32; color:#2e7d32;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar Prod. e Categ. na Nuvem</button>
         </div>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
@@ -337,7 +350,6 @@
     let loopSync = null;
     let wakeLock = null; 
 
-    // Hierarquia de status para garantir que o cliente prevaleça e evite o "efeito fantasma"
     const hierarquiaStatus = { 'pendente': 1, 'fazendo': 2, 'enviado': 3, 'buscar': 3, 'cancelado': 4, 'concluido': 5 };
 
     const sonsDisponiveis = { "sem_som": "", "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg", "sino": "https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg", "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg", "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" };
@@ -482,20 +494,13 @@
 
             let mixPedidos = dadosServidor.concat(pedidosPendentesLocais);
 
-            // A MÁGICA DO "A COZINHA MANDA" (O Operador tem prioridade sobre o Servidor atrasado)
             pedidosServidor = mixPedidos.map(pServ => {
                 let pLocal = pedidosServidor.find(x => x.id == pServ.id);
                 if (pLocal) {
-                    // Se estiver no bloqueio de 15s recente, ignora o servidor
                     if (pedidosBloqueados.has(pServ.id.toString())) { return pLocal; }
-                    
-                    // Se o status local for MAIOR na hierarquia, ignora o downgrade do servidor
                     let pesoLocal = hierarquiaStatus[pLocal.status] || 0;
                     let pesoServidor = hierarquiaStatus[pServ.status] || 0;
-                    
-                    if (pesoLocal > pesoServidor) {
-                        return pLocal; // O app da cozinha recusa o retrocesso
-                    }
+                    if (pesoLocal > pesoServidor) { return pLocal; }
                 }
                 return pServ;
             });
@@ -681,8 +686,10 @@
     function abrirLoginAdmin() { document.getElementById('senhaAdmin').value = ''; document.getElementById('modalLoginAdmin').style.display = 'flex'; setTimeout(()=>document.getElementById('senhaAdmin').focus(), 100); }
     
     function solicitarAcessoAvancado() {
-        let senha = prompt("ZONA DE RISCO. Digite a senha ADM:");
-        if (senha === "1999") { fecharModal('modalPainelUnificado'); document.getElementById('inputExcluirTudo').value = ''; document.getElementById('modalConfigAvancadas').style.display = 'flex'; } else if(senha) { alert("Senha incorreta!"); }
+        fecharModal('modalPainelUnificado');
+        document.getElementById('senhaAvancada').value = '';
+        document.getElementById('modalSenhaAvancada').style.display = 'flex';
+        setTimeout(() => document.getElementById('senhaAvancada').focus(), 100);
     }
 
     function excluirTodoHistorico() {
@@ -752,7 +759,6 @@
                     stats[nomeBase].tempoTotal += minutos;
                     stats[nomeBase].countTempo++;
                     
-                    // Salvando os minutos e a data formatada
                     stats[nomeBase].temposIndividuais.push({
                         minutos: minutos,
                         dataStr: new Date(dataPedTime).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})
@@ -778,7 +784,6 @@
             let tempoStr = media < 1 ? "&lt; 1 min" : `${media} min`;
             if(item.countTempo === 0) tempoStr = "-"; 
 
-            // Montando a listagem com Data, Hora e o Tempo
             let tagsHtml = item.temposIndividuais.map(t => {
                 let corBg = t.minutos <= 15 ? '#c8e6c9' : (t.minutos <= 30 ? '#fff9c4' : '#ffcdd2');
                 let corTx = t.minutos <= 15 ? '#2e7d32' : (t.minutos <= 30 ? '#f57f17' : '#c62828');
@@ -821,11 +826,11 @@
             if(btn) btn.innerText = "Salvando..."; 
             await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos } }) }); 
             alert("Salvo na Nuvem com sucesso!"); 
-            if(btn) btn.innerText = "⬆️ Salvar Cardápio na Nuvem";
+            if(btn) btn.innerText = "⬆️ Salvar Prod. e Categ. na Nuvem";
         } catch(e) { 
             alert("Erro de conexão ao salvar."); 
             const btn = document.getElementById('btnSalvarNuvem');
-            if(btn) btn.innerText = "⬆️ Salvar Cardápio na Nuvem";
+            if(btn) btn.innerText = "⬆️ Salvar Prod. e Categ. na Nuvem";
         } 
     }
 
@@ -862,9 +867,19 @@
     function abrirFormCategoria(idx) { fecharModal('modalListagem'); if(idx >= 0) { const c = db.categorias[idx]; document.getElementById('catIndexOriginal').value = idx; document.getElementById('catNome').value = c.nome; document.getElementById('catCor').value = c.cor; document.getElementById('catCorTexto').value = c.corTexto || '#000000'; } else { document.getElementById('catIndexOriginal').value = '-1'; document.getElementById('catNome').value = ''; document.getElementById('catCor').value = '#1976D2'; document.getElementById('catCorTexto').value = '#ffffff'; } document.getElementById('modalFormCategoria').style.display = 'flex'; }
     function salvarCategoria() { const idx = parseInt(document.getElementById('catIndexOriginal').value); const nome = document.getElementById('catNome').value.trim(); const cor = document.getElementById('catCor').value; const corTexto = document.getElementById('catCorTexto').value; if(!nome) return alert("Preencha o nome!"); if(idx >= 0) { const nomeAntigo = db.categorias[idx].nome; db.categorias[idx] = { nome, cor, corTexto }; db.produtos.forEach(p => { if(p.categoria === nomeAntigo) p.categoria = nome; }); } else { db.categorias.push({ nome, cor, corTexto }); } salvarBancoLocal(); iniciar(); abrirGerenciar('categorias'); }
 
-    // Login com o 1999 instantâneo intocado
     document.getElementById('senhaAdmin').addEventListener('input', function(e) {
         if(this.value === "1999") { this.blur(); document.getElementById('modalLoginAdmin').style.display = 'none'; document.getElementById('configUrlApp').value = db.configs.url || ''; document.getElementById('configSenhaModo').value = db.configs.senhaModo || ''; document.getElementById('configSomCozinha').value = db.configs.somCozinha || 'sem_som'; document.getElementById('configSomPanelas').value = db.configs.somPanelas || 'sem_som'; document.getElementById('modalPainelUnificado').style.display = 'flex'; this.value = ''; }
+    });
+
+    // MÁGICA DA SENHA DA ZONA DE RISCO
+    document.getElementById('senhaAvancada').addEventListener('input', function(e) {
+        if(this.value === "1999") { 
+            this.blur(); 
+            document.getElementById('modalSenhaAvancada').style.display = 'none'; 
+            document.getElementById('inputExcluirTudo').value = ''; 
+            document.getElementById('modalConfigAvancadas').style.display = 'flex'; 
+            this.value = ''; 
+        }
     });
 
     iniciar();
