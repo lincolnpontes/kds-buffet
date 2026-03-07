@@ -46,10 +46,12 @@
         .item-title { font-weight: bold; font-size: 18px; margin-bottom: 2px; }
         .item-subtitle { color: #666; font-size: 13px; line-height: 1.4; }
 
+        /* MUDANÇA: O texto riscado agora só vai pro elemento com a classe .riscar */
+        .riscar { text-decoration: line-through; opacity: 0.6; }
         .status-pendente { border-left: 8px solid #d32f2f; background-color: #ffebee; }
         .status-fazendo { border-left: 8px solid #fbc02d; background-color: #fffde7; }
-        .status-cancelado { border-left: 8px solid #000000; opacity: 0.7; background-color: #f0f0f0; text-decoration: line-through; }
-        .status-concluido { border-left: 8px solid #9e9e9e; opacity: 0.6; text-decoration: line-through; }
+        .status-cancelado { border-left: 8px solid #000000; background-color: #f0f0f0; }
+        .status-concluido { border-left: 8px solid #9e9e9e; background-color: #fafafa;}
         
         .painel-ultimos { flex: 0 0 35%; height: 35%; max-height: 35%; border-top: 3px solid #ccc; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
         .painel-titulo { padding: 10px; background: #eee; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
@@ -79,7 +81,7 @@
         .btn-danger { background: #d32f2f; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 10px; }
         .btn-outline { background: #E3F2FD; color: #1976D2; border: 1px solid #1976D2; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: flex-start; gap: 15px; }
         
-        .btn-tab { background: #eee; color: #666; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; }
+        .btn-tab { background: #eee; color: #666; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; font-size: 12px; white-space: nowrap; }
         .btn-tab.active { background: #1976D2; color: white; }
 
         .gerenciar-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
@@ -279,9 +281,20 @@
     <div class="modal" style="display:flex; flex-direction:column; max-height: 90vh;">
         <div class="modal-title">Detalhes da Produção</div>
         
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <div style="display:flex; gap:5px; margin-bottom:10px; flex-wrap: wrap;">
             <button class="btn-tab active" id="btnAbaHoje" onclick="renderizarMetricasDetalhes('hoje')">Hoje</button>
-            <button class="btn-tab" id="btnAbaSemana" onclick="renderizarMetricasDetalhes('semana')">Últimos 7 Dias</button>
+            <button class="btn-tab" id="btnAba7d" onclick="renderizarMetricasDetalhes('7d')">7d</button>
+            <button class="btn-tab" id="btnAba15d" onclick="renderizarMetricasDetalhes('15d')">15d</button>
+            <button class="btn-tab" id="btnAba30d" onclick="renderizarMetricasDetalhes('30d')">30d</button>
+            <button class="btn-tab" id="btnAbaCustom" onclick="mostrarCalendarioCustom()">📅</button>
+        </div>
+        
+        <div id="boxFiltroCustom" style="display:none; margin-bottom:15px; background:#eee; padding:10px; border-radius:5px;">
+            <div style="display:flex; gap:10px; flex-direction: column;">
+                <div><label style="font-size:12px; font-weight:bold;">De:</label><input type="date" id="filtroDataInicio" style="width:100%; padding:5px;"></div>
+                <div><label style="font-size:12px; font-weight:bold;">Até:</label><input type="date" id="filtroDataFim" style="width:100%; padding:5px;"></div>
+                <button class="btn-action" style="padding: 8px;" onclick="renderizarMetricasDetalhes('custom')">Aplicar Filtro</button>
+            </div>
         </div>
 
         <div class="metrica-card" style="padding: 10px; display:flex; justify-content:space-between; align-items:center;">
@@ -290,7 +303,7 @@
         </div>
 
         <div style="font-size:12px; color:#888; display:flex; justify-content:space-between; padding: 0 5px 5px 5px;">
-            <span>Produto</span>
+            <span>Produto (Toque p/ detalhes)</span>
             <span>Qtd / T. Médio</span>
         </div>
 
@@ -345,7 +358,7 @@
         const diffEmMs = Date.now() - new Date(timestamp).getTime();
         const minutos = Math.floor(diffEmMs / 60000);
         if (minutos < 1) return "&lt; 1 min";
-        if (minutos === 1) return "há 1 min";
+        if (minutos === 1) return `há 1 min`;
         return `há ${minutos} min`;
     }
 
@@ -441,7 +454,10 @@
         if(pedidoLocal) { pedidoLocal.status = 'cancelado'; pedidoLocal.motivo = motivo; pedidoLocal.finalizadoEm = new Date().toISOString(); }
         renderizarListaCozinha();
 
-        fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'cancelar_pedido', id: id, motivo: motivo }) }).then(() => setTimeout(() => pedidosBloqueados.delete(id.toString()), 2000)).catch(() => pedidosBloqueados.delete(id.toString()));
+        // MUDANÇA: Aumentei o tempo de bloqueio para 15 segundos para evitar o efeito elástico
+        fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'cancelar_pedido', id: id, motivo: motivo }) })
+        .then(() => setTimeout(() => pedidosBloqueados.delete(id.toString()), 15000))
+        .catch(() => pedidosBloqueados.delete(id.toString()));
     }
 
     async function syncGeral() {
@@ -520,40 +536,48 @@
         }).reverse().forEach(p => {
             
             let emoji = '🔔'; let isFinal = false; let formatProduto = `<strong>${p.produto}</strong>`;
-            let acaoTxt = ""; let tempoStr = ""; 
+            let acaoTxt = ""; let tempoStr = ""; let classeRiscar = "";
             
-            if (p.status === 'pendente') { emoji = '🔔'; } 
-            else if (p.status === 'fazendo') { emoji = '🔥'; tempoStr = getTempoRelativo(p.timestamp); } 
+            if (p.status === 'pendente') { 
+                emoji = '🔔'; 
+                acaoTxt = '👆 Toque para aceitar'; // MUDANÇA 1: Mensagem restaurada
+                tempoStr = getTempoRelativo(p.timestamp);
+            } 
+            else if (p.status === 'fazendo') { 
+                emoji = '🔥'; 
+                tempoStr = getTempoRelativo(p.timestamp); 
+            } 
             else if (p.status === 'enviado') { 
-                emoji = '✔️'; isFinal = true; 
-                acaoTxt = '👈 Deslize: desfazer o envio - <b>[Enviado]</b>';
+                emoji = '✔️'; isFinal = true; classeRiscar = "riscar";
+                acaoTxt = '👈 Deslize: desfaz envio - <b>[Enviado]</b>';
             } 
             else if (p.status === 'buscar') { 
-                emoji = '✔️'; isFinal = true; 
-                acaoTxt = '👈 Deslize: desfazer - <b>[Mandou Buscar]</b>';
+                emoji = '✔️'; isFinal = true; classeRiscar = "riscar";
+                acaoTxt = '👈 Deslize: desfaz envio - <b>[Mandou Buscar]</b>';
             } 
             else if (p.status === 'cancelado') { 
-                emoji = '❌'; isFinal = true; 
-                acaoTxt = p.motivo ? `👈 Deslize: desfazer (Motivo: ${p.motivo})` : '👈 Deslize: desfazer';
+                emoji = '❌'; isFinal = true; classeRiscar = "riscar";
+                acaoTxt = p.motivo ? `👈 Deslize: desfaz envio (Motivo: ${p.motivo})` : '👈 Deslize: desfaz envio';
             }
             
             let cssStatus = isFinal ? (p.status==='cancelado' ? 'cancelado' : 'concluido') : p.status;
             
+            // MUDANÇA 2: O Entregue agora se atualiza dinamicamente usando a mesma função de cálculo de tempo
             if (isFinal && p.finalizadoEm && p.status !== 'cancelado') {
-                let minEntrega = Math.floor((new Date(p.finalizadoEm).getTime() - new Date(p.timestamp).getTime()) / 60000);
-                tempoStr = minEntrega < 1 ? "Entregue &lt; 1 min" : `Entregue em ${minEntrega} min`;
+                tempoStr = `Entregue ${getTempoRelativo(p.finalizadoEm)}`;
             } else if (p.status === 'cancelado') {
                 tempoStr = ""; 
             }
 
-            let subtitleHtml = acaoTxt ? `<div class="item-subtitle">${acaoTxt}</div>` : '';
+            let subtitleHtml = acaoTxt ? `<div class="item-subtitle" style="text-decoration: none !important; opacity: 1 !important;">${acaoTxt}</div>` : '';
 
+            // Note que apliquei a 'classeRiscar' APENAS no avatar e no item-title
             lista.innerHTML += `
                 <li class="item status-${cssStatus}" id="ped-${p.id}" data-id="${p.id}" data-status="${p.status}" data-nome="${p.produto}" ontouchstart="handleTouchStart(event, this)" ontouchmove="handleTouchMove(event)" ontouchend="handleTouchEnd(event, this)">
-                    <div class="item-avatar" style="background:transparent; font-size:24px; margin-right: 10px;">${emoji}</div>
+                    <div class="item-avatar ${classeRiscar}" style="background:transparent; font-size:24px; margin-right: 10px;">${emoji}</div>
                     <div class="item-info" style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <div class="item-title" style="margin: 0;">${formatProduto}</div>
+                            <div class="item-title ${classeRiscar}" style="margin: 0;">${formatProduto}</div>
                             ${subtitleHtml}
                         </div>
                         <div style="font-size:13px; color:#888; font-weight:bold; white-space:nowrap; margin-left:10px;">${tempoStr}</div>
@@ -579,7 +603,11 @@
         pedidosBloqueados.add(id.toString()); let pedidoLocal = pedidosServidor.find(x => x.id == id);
         if(pedidoLocal) { pedidoLocal.status = novoStatus; if(novoStatus === 'enviado' || novoStatus === 'buscar' || novoStatus === 'concluido') pedidoLocal.finalizadoEm = new Date().toISOString(); }
         renderizarListaCozinha();
-        fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'atualizar_status', id: id, novoStatus: novoStatus }) }).then(() => setTimeout(() => pedidosBloqueados.delete(id.toString()), 2000)).catch(() => pedidosBloqueados.delete(id.toString()));
+        
+        // MUDANÇA 4: Bloqueio estendido para 15 segundos para evitar o "retorno fantasma"
+        fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'atualizar_status', id: id, novoStatus: novoStatus }) })
+        .then(() => setTimeout(() => pedidosBloqueados.delete(id.toString()), 15000))
+        .catch(() => pedidosBloqueados.delete(id.toString()));
     }
 
     function gerenciarAlarme() {
@@ -654,42 +682,63 @@
 
     function forcarAtualizacao() { localStorage.removeItem('kds_v1_db'); sessionStorage.clear(); window.location.reload(true); }
 
-    // --- MÉTRICAS POR ITEM ---
+    // --- MUDANÇA 3: RELATÓRIOS EXPANSIVOS E FILTROS DE DATA ---
     function abrirModalMetricas() {
         fecharModal('modalPainelUnificado');
+        document.getElementById('boxFiltroCustom').style.display = 'none';
         renderizarMetricasDetalhes('hoje');
         document.getElementById('modalMetricas').style.display = 'flex';
     }
 
-    function renderizarMetricasDetalhes(periodo) {
-        document.getElementById('btnAbaHoje').classList.remove('active');
-        document.getElementById('btnAbaSemana').classList.remove('active');
-        if(periodo === 'hoje') document.getElementById('btnAbaHoje').classList.add('active');
-        else document.getElementById('btnAbaSemana').classList.add('active');
+    function mostrarCalendarioCustom() {
+        document.querySelectorAll('#modalMetricas .btn-tab').forEach(b => b.classList.remove('active'));
+        document.getElementById('btnAbaCustom').classList.add('active');
+        document.getElementById('boxFiltroCustom').style.display = 'block';
+    }
 
-        const dataHoje = new Date().toDateString(); 
-        const seteDiasAtras = Date.now() - (7 * 86400000);
+    function renderizarMetricasDetalhes(periodo) {
+        if(periodo !== 'custom') {
+            document.querySelectorAll('#modalMetricas .btn-tab').forEach(b => b.classList.remove('active'));
+            document.getElementById('btnAba' + (periodo === 'hoje' ? 'Hoje' : periodo)).classList.add('active');
+            document.getElementById('boxFiltroCustom').style.display = 'none';
+        }
+
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        let timeInicio = 0; let timeFim = Date.now();
+
+        if (periodo === 'hoje') { timeInicio = hoje.getTime(); }
+        else if (periodo === '7d') { timeInicio = hoje.getTime() - (6 * 86400000); }
+        else if (periodo === '15d') { timeInicio = hoje.getTime() - (14 * 86400000); }
+        else if (periodo === '30d') { timeInicio = hoje.getTime() - (29 * 86400000); }
+        else if (periodo === 'custom') {
+            const dtIni = document.getElementById('filtroDataInicio').value;
+            const dtFim = document.getElementById('filtroDataFim').value;
+            if(!dtIni || !dtFim) return alert("Selecione a data de início e fim.");
+            
+            // Corrige fuso horário local para o input type=date
+            let dI = new Date(dtIni); dI.setMinutes(dI.getMinutes() + dI.getTimezoneOffset()); dI.setHours(0,0,0,0);
+            let dF = new Date(dtFim); dF.setMinutes(dF.getMinutes() + dF.getTimezoneOffset()); dF.setHours(23,59,59,999);
+            timeInicio = dI.getTime(); timeFim = dF.getTime();
+        }
         
         let stats = {}; 
         let totalGeral = 0;
 
         pedidosServidor.forEach(p => {
-            let dataPed = new Date(p.timestamp);
-            let incluir = false;
-            if (periodo === 'hoje' && dataPed.toDateString() === dataHoje) incluir = true;
-            if (periodo === 'semana' && dataPed.getTime() >= seteDiasAtras) incluir = true;
-
-            if (incluir) {
+            let dataPedTime = new Date(p.timestamp).getTime();
+            if (dataPedTime >= timeInicio && dataPedTime <= timeFim) {
                 let nomeBase = p.produto.split(" (Obs:")[0]; 
                 
-                if (!stats[nomeBase]) stats[nomeBase] = { qtd: 0, tempoTotal: 0, countTempo: 0 };
+                if (!stats[nomeBase]) stats[nomeBase] = { qtd: 0, tempoTotal: 0, countTempo: 0, temposIndividuais: [] };
                 stats[nomeBase].qtd++;
                 totalGeral++;
 
                 if ((p.status === 'enviado' || p.status === 'buscar' || p.status === 'concluido') && p.finalizadoEm) {
-                    let minutos = (new Date(p.finalizadoEm).getTime() - dataPed.getTime()) / 60000;
+                    let minutos = Math.floor((new Date(p.finalizadoEm).getTime() - dataPedTime) / 60000);
                     stats[nomeBase].tempoTotal += minutos;
                     stats[nomeBase].countTempo++;
+                    stats[nomeBase].temposIndividuais.push(minutos);
                 }
             }
         });
@@ -706,26 +755,41 @@
             return;
         }
 
-        arrayStats.forEach(item => {
+        arrayStats.forEach((item, idx) => {
             let media = item.countTempo > 0 ? Math.round(item.tempoTotal / item.countTempo) : 0;
             let tempoStr = media < 1 ? "&lt; 1 min" : `${media} min`;
             if(item.countTempo === 0) tempoStr = "-"; 
 
+            // Monta as tags coloridas para os tempos individuais
+            let tagsHtml = item.temposIndividuais.map(t => {
+                let corBg = t <= 15 ? '#c8e6c9' : (t <= 30 ? '#fff9c4' : '#ffcdd2');
+                let corTx = t <= 15 ? '#2e7d32' : (t <= 30 ? '#f57f17' : '#c62828');
+                return `<span style="display:inline-block; background:${corBg}; color:${corTx}; border-radius:4px; padding:3px 6px; margin:2px; font-size:11px; font-weight:bold;">${t < 1 ? '<1' : t}m</span>`;
+            }).join('');
+            
+            if(tagsHtml === '') tagsHtml = '<span style="font-size:11px; color:#999;">Sem histórico finalizado</span>';
+
             lista.innerHTML += `
-                <li class="item" style="padding: 10px; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="flex:1;">
-                        <strong style="font-size:14px; color:#333;">${item.nome}</strong>
+                <li class="item" style="padding: 10px; border-bottom: 1px solid #eee; flex-direction:column; align-items:stretch; cursor:pointer;" onclick="document.getElementById('det-${idx}').style.display = document.getElementById('det-${idx}').style.display === 'none' ? 'block' : 'none'">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="flex:1;">
+                            <strong style="font-size:14px; color:#333;">${item.nome}</strong>
+                            <div style="font-size:11px; color:#1976D2; margin-top:2px;">+ ver tempos</div>
+                        </div>
+                        <div style="text-align:right; font-size:13px; color:#555;">
+                            <span style="display:inline-block; width:40px; text-align:center; background:#e0e0e0; border-radius:10px; padding:2px 5px; font-weight:bold;">${item.qtd}x</span>
+                            <span style="display:inline-block; width:65px; text-align:right; color:#2e7d32; font-weight:bold;">⏱️ ${tempoStr}</span>
+                        </div>
                     </div>
-                    <div style="text-align:right; font-size:13px; color:#555;">
-                        <span style="display:inline-block; width:40px; text-align:center; background:#e0e0e0; border-radius:10px; padding:2px 5px; font-weight:bold;">${item.qtd}x</span>
-                        <span style="display:inline-block; width:65px; text-align:right; color:#2e7d32; font-weight:bold;">⏱️ ${tempoStr}</span>
+                    <div id="det-${idx}" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #ccc;">
+                        <div style="font-size:11px; color:#666; margin-bottom:5px;">Tempos em cada pedido:</div>
+                        <div style="display:flex; flex-wrap:wrap;">${tagsHtml}</div>
                     </div>
                 </li>
             `;
         });
     }
 
-    // --- FUNÇÃO CORRIGIDA DO BOTÃO DE SALVAR ---
     async function sincronizarSalvarNuvem() {
         if(!db.configs.url) return alert("Salve a URL!");
         try { 
@@ -739,6 +803,15 @@
             const btn = document.getElementById('btnSalvarNuvem');
             if(btn) btn.innerText = "⬆️ Salvar na Nuvem";
         } 
+    }
+
+    async function sincronizarPuxarNuvem(pedirConfirmacao) {
+        if(!db.configs.url) return;
+        if(pedirConfirmacao && !confirm("Deseja puxar dados da nuvem?")) return; 
+        try {
+            let res = await fetch(db.configs.url + "?action=carregar_banco"); let nuvemDB = await res.json();
+            if(nuvemDB.produtos) { db.produtos = nuvemDB.produtos; db.categorias = nuvemDB.categorias || []; db.obsPedidos = nuvemDB.obsPedidos || ["Sem sal", "Pouco óleo"]; db.obsCancelamentos = nuvemDB.obsCancelamentos || ["Falta de insumo", "Queimou"]; salvarBancoLocal(); if(pedirConfirmacao) { alert("Sucesso!"); location.reload(); } else { iniciar(); } }
+        } catch(e) { console.log("Erro nuvem."); }
     }
 
     function salvarURL() { const urlInput = document.getElementById('configUrlApp').value.trim(); if(urlInput === "") return alert("Vazio."); db.configs.url = urlInput; salvarBancoLocal(); sincronizarPuxarNuvem(false); alert("URL salva e sincronizada!"); }
