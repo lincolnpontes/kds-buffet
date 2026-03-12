@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v1.1</title>
+    <title>Alô Cozinha v1.2</title>
 
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -16,10 +16,11 @@
         
         .app-container { width: 100%; max-width: 100%; background-color: #ffffff; height: 100vh; display: flex; flex-direction: column; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
         
-        #overlayInatividade { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.65); z-index: 9998; pointer-events: none; display: none; transition: opacity 0.5s; opacity: 0; }
+        #overlayInatividade { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.75); z-index: 9998; pointer-events: none; display: none; transition: opacity 0.5s; opacity: 0; }
 
-        #splashScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #1565C0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease; }
-        .splash-icone { width: 120px; height: 120px; margin-bottom: 20px; border-radius: 25%; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.3); background-color: transparent; }
+        /* MUDANÇA 7: Splash Screen com fundo claro e texto azul */
+        #splashScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f0f2f5; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #1565C0; transition: opacity 0.5s ease; }
+        .splash-icone { width: 120px; height: 120px; margin-bottom: 20px; border-radius: 25%; object-fit: contain; background-color: transparent; }
         .splash-titulo { font-size: 32px; font-weight: bold; margin-bottom: 5px; }
         .splash-versao { font-size: 16px; opacity: 0.8; }
 
@@ -102,7 +103,7 @@
 <div id="splashScreen">
     <img src="icon.png" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v1.1</div>
+    <div class="splash-versao">v1.2</div>
 </div>
 
 <div class="app-container">
@@ -256,7 +257,7 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.1</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.2</div>
 
         <button class="btn-outline" onclick="abrirGerenciar('produtos')">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="abrirGerenciar('categorias')">🏷️ Gerenciar Categorias</button>
@@ -276,19 +277,46 @@
                 </select>
             </div>
             <div class="form-group" style="flex: 1; margin:0;">
-                <label>Cortina de Inatividade:</label>
-                <select id="configInatividade">
-                    <option value="0">Desativado</option>
-                    <option value="1">Após 1 min</option>
-                    <option value="2">Após 2 min</option>
-                    <option value="5">Após 5 min</option>
-                </select>
+                <label>Cortina Descanso:</label>
+                <input type="number" id="configInatividade" placeholder="Min. (0 para Não)" inputmode="numeric" style="padding: 10px; height: 40px; box-sizing: border-box;">
             </div>
         </div>
 
         <div class="form-group"><label>Senha para Trocar de Modo:</label><input type="password" id="configSenhaModo" placeholder="Deixe em branco para livre" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
-        <div class="form-group"><label>Som Cozinha (Novo Pedido):</label><div style="display:flex; gap:10px;"><select id="configSomCozinha" style="flex:1;"><option value="sem_som">Sem som</option><option value="beep">Beep Clássico</option><option value="beep_duplo">Beep Duplo</option><option value="sino">Sino de Jantar</option><option value="sino_forte">Sino Forte</option><option value="mecanico">Sino Mecânico</option><option value="alarme">Alarme Curto</option><option value="digital">Relógio Digital</option><option value="suave">Gota Suave</option></select><button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomCozinha')">▶️</button></div></div>
-        <div class="form-group"><label>Som Panelas (Atenção/Cancelado):</label><div style="display:flex; gap:10px;"><select id="configSomPanelas" style="flex:1;"><option value="sem_som">Sem som</option><option value="beep">Beep Clássico</option><option value="beep_duplo">Beep Duplo</option><option value="sino">Sino de Jantar</option><option value="sino_forte">Sino Forte</option><option value="mecanico">Sino Mecânico</option><option value="alarme">Alarme Curto</option><option value="digital">Relógio Digital</option><option value="suave">Gota Suave</option></select><button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomPanelas')">▶️</button></div></div>
+        
+        <div class="form-group">
+            <label>Som Cozinha (Novo Pedido):</label>
+            <div style="display:flex; gap:10px;">
+                <select id="configSomCozinha" style="flex:1;">
+                    <option value="sem_som">Sem som</option>
+                    <option value="alarme">Alarme Curto</option>
+                    <option value="beep">Beep Clássico</option>
+                    <option value="bipe_rapido">Bipe Eletrônico</option>
+                    <option value="campainha">Campainha</option>
+                    <option value="sino">Sino de Jantar</option>
+                    <option value="sino_forte">Sino Forte</option>
+                    <option value="trem">Sino de Trem (Muito Forte)</option>
+                </select>
+                <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomCozinha')">▶️</button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Som Panelas (Atenção/Cancelado):</label>
+            <div style="display:flex; gap:10px;">
+                <select id="configSomPanelas" style="flex:1;">
+                    <option value="sem_som">Sem som</option>
+                    <option value="alarme">Alarme Curto</option>
+                    <option value="beep">Beep Clássico</option>
+                    <option value="bipe_rapido">Bipe Eletrônico</option>
+                    <option value="campainha">Campainha</option>
+                    <option value="sino">Sino de Jantar</option>
+                    <option value="sino_forte">Sino Forte</option>
+                    <option value="trem">Sino de Trem (Muito Forte)</option>
+                </select>
+                <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomPanelas')">▶️</button>
+            </div>
+        </div>
         
         <h3 style="font-size: 16px; color: #d32f2f; margin-top: 25px; margin-bottom: 10px;">Avançado</h3>
         <button class="btn-danger" onclick="solicitarAcessoAvancado()">⚠️ Configurações Avançadas</button>
@@ -398,22 +426,22 @@
     let acaoPendente = null;
     let parametroAcao = null;
 
-    // Fila invisível contra quedas de internet ("Caça-Fantasma")
     let filaRetentativaStatus = JSON.parse(localStorage.getItem('kds_fila_status') || '[]');
 
     const hierarquiaStatus = { 'pendente': 1, 'fazendo': 2, 'enviado': 3, 'buscar': 3, 'cancelado': 4, 'concluido': 5 };
 
+    // MUDANÇA 8: Dicionário atualizado com os novos sons
     const sonsDisponiveis = { 
         "sem_som": "", 
+        "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
         "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg", 
-        "beep_duplo": "https://actions.google.com/sounds/v1/alarms/double_beep.ogg",
+        "bipe_rapido": "https://actions.google.com/sounds/v1/alarms/dosimeter_alarm.ogg",
+        "campainha": "https://actions.google.com/sounds/v1/alarms/doorbell.ogg",
         "sino": "https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg", 
         "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg", 
-        "mecanico": "https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg",
-        "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
-        "digital": "https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg",
-        "suave": "https://actions.google.com/sounds/v1/water/water_drop.ogg"
+        "trem": "https://actions.google.com/sounds/v1/alarms/train_horn.ogg"
     };
+    
     let playerAlarme = new Audio(); playerAlarme.loop = true; let alarmeTocando = false; let previewAudio = null; let previewTimeout = null;
 
     let timerInatividade = null;
@@ -421,7 +449,7 @@
         document.getElementById('overlayInatividade').style.opacity = '0';
         setTimeout(() => document.getElementById('overlayInatividade').style.display = 'none', 300);
         clearTimeout(timerInatividade);
-        let tempoMinutos = parseInt(db.configs.inatividade || 0);
+        let tempoMinutos = parseFloat(db.configs.inatividade || 0);
         if(tempoMinutos > 0) {
             timerInatividade = setTimeout(() => {
                 document.getElementById('overlayInatividade').style.display = 'block';
@@ -514,7 +542,6 @@
         if(filtrados.length === 0) { lista.innerHTML = '<li style="padding: 20px; text-align: center; color: #666;">Nenhum produto cadastrado.</li>'; return; }
         filtrados.forEach(p => { 
             const catObj = db.categorias.find(c => c.nome === p.categoria) || {cor:'#eee', corTexto:'#000'}; 
-            // O Avatar não tem mais background branco forte, puxa a cor da categoria
             const primeiraLetra = p.nome.charAt(0).toUpperCase(); 
             lista.innerHTML += `<li class="item" onclick="abrirModalPedido('${p.nome}')"><div class="item-avatar" style="background-color: ${catObj.cor}; color: ${catObj.corTexto};">${primeiraLetra}</div><div class="item-info"><div class="item-title">${p.nome}</div><div class="item-subtitle">${p.categoria}</div></div><div class="swipe-hint">➕</div></li>`; 
         });
@@ -525,7 +552,6 @@
         document.getElementById('tituloModalPedido').innerText = `Pedir: ${nomeProduto}`; document.getElementById('pedidoItemNome').value = nomeProduto; document.getElementById('pedidoObsText').value = '';
         const container = document.getElementById('obsChipsContainer'); container.innerHTML = '';
         
-        // Junta Observações Globais com Específicas
         let pObj = db.produtos.find(p => p.nome === nomeProduto);
         let listaObs = [...db.obsPedidos];
         if(pObj && pObj.obsEspec) listaObs = [...listaObs, ...pObj.obsEspec];
@@ -568,15 +594,12 @@
 
     async function processarFilaRetentativas() {
         if(filaRetentativaStatus.length === 0 || !db.configs.url) return;
-        // Pega o primeiro da fila
         let item = filaRetentativaStatus[0];
         try {
             await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify(item.payload) });
-            // Se chegou aqui (o fetch não deu throw offline), removemos da fila
             filaRetentativaStatus.shift();
             salvarFilaStatus();
-            // Se ainda tem mais, processa no próximo pulso
-        } catch(e) { } // Silencioso, falhou porque tá sem net, tenta de novo daqui a 5s
+        } catch(e) { } 
     }
 
     async function alterarStatusPedido(id, novoStatus, motivo = '') {
@@ -592,13 +615,12 @@
         }
         renderizarListaCozinha();
         
-        // Coloca a ação na FILA de RETENTATIVAS (para combater quedas do Wi-Fi)
         let payload = { action: (novoStatus === 'cancelado' ? 'cancelar_pedido' : 'atualizar_status'), id: id, novoStatus: novoStatus };
         if(motivo) payload.motivo = motivo;
         
         filaRetentativaStatus.push({ payload: payload, time: Date.now() });
         salvarFilaStatus();
-        processarFilaRetentativas(); // Tenta enviar logo de cara
+        processarFilaRetentativas(); 
 
         setTimeout(() => pedidosBloqueados.delete(id.toString()), 15000);
     }
@@ -612,7 +634,7 @@
 
     async function syncGeral() {
         if(!db.configs.url) return;
-        processarFilaRetentativas(); // Sempre que tentar sincronizar, tenta limpar a fila antes
+        processarFilaRetentativas(); 
 
         try {
             const resp = await fetch(db.configs.url);
@@ -632,7 +654,6 @@
                     if (pedidosBloqueados.has(pServ.id.toString())) { return pLocal; }
                     let pesoLocal = hierarquiaStatus[pLocal.status] || 0;
                     let pesoServidor = hierarquiaStatus[pServ.status] || 0;
-                    // Proteção extra: se eu tenho algo na fila de retentativas para esse ID, ignoro o servidor
                     let temNaFila = filaRetentativaStatus.some(f => f.payload.id == pServ.id);
                     if (pesoLocal > pesoServidor || temNaFila) { return pLocal; }
                 }
@@ -964,14 +985,12 @@
         } 
     }
 
-    // TRAVA ANTI-COLISÃO DE BANCO DE DADOS AQUI
     async function sincronizarPuxarNuvem(pedirConfirmacao) {
         if(!db.configs.url) return;
         if(pedirConfirmacao && !confirm("Deseja puxar dados da nuvem?")) return; 
         try {
             let res = await fetch(db.configs.url + "?action=carregar_banco"); let nuvemDB = await res.json();
             
-            // Validação severa do Banco (Trava anti-outro-app)
             if(!nuvemDB.obsCancelamentos && nuvemDB.produtos === undefined) {
                 alert("⛔ ERRO DE URL (BANCO INCOMPATÍVEL)!\n\nEste link não pertence ao banco de dados do Alô Cozinha. A operação foi abortada para proteger seu equipamento.\n\nVerifique a URL colada.");
                 return;
@@ -991,30 +1010,27 @@
         } catch(e) { console.log("Erro nuvem."); }
     }
 
-    // EXPORTAÇÃO E IMPORTAÇÃO FÍSICA
+    // MUDANÇA 5: Backup Físico direto via Download (Ignora AppScript e API de Share do navegador)
     function exportarDadosFisicos() {
-        const dataStr = JSON.stringify(db);
-        const blob = new Blob([dataStr], { type: "application/json" });
-        const data = new Date();
-        const nomeArquivo = `alo_cozinha_backup_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.json`;
-        
-        // Tenta usar a interface nativa de compartilhamento (Web Share API) do Android/iOS
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], nomeArquivo, {type: blob.type})] })) {
-            const file = new File([blob], nomeArquivo, {type: blob.type});
-            navigator.share({
-                title: 'Backup Alô Cozinha',
-                text: 'Aqui está o backup do seu restaurante.',
-                files: [file]
-            }).catch(console.error);
-        } else {
-            // Fallback: Faz o download normal se estiver no PC
+        try {
+            const dataStr = JSON.stringify(db);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const data = new Date();
+            const nomeArquivo = `alo_cozinha_backup_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.json`;
+            
+            const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
-            const url = URL.createObjectURL(blob);
+            a.style.display = "none";
             a.href = url;
             a.download = nomeArquivo;
             document.body.appendChild(a);
             a.click();
-            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 0);
+            setTimeout(() => { 
+                document.body.removeChild(a); 
+                window.URL.revokeObjectURL(url); 
+            }, 1000);
+        } catch(e) {
+            alert("Erro ao exportar: " + e.message);
         }
     }
 
@@ -1027,7 +1043,7 @@
                 const importedDB = JSON.parse(e.target.result);
                 if (importedDB && importedDB.produtos && importedDB.configs) {
                     db = importedDB;
-                    db.configs.dadosBaixados = true; // Força a permissão de salvar na nuvem
+                    db.configs.dadosBaixados = true; 
                     salvarBancoLocal();
                     alert("✅ Banco de dados restaurado com sucesso! O aplicativo será recarregado.");
                     location.reload();
