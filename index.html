@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v1.4</title>
+    <title>Alô Cozinha v1.1</title>
 
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overflow: hidden; position: fixed; width: 100%; height: 100%; }
@@ -102,7 +102,7 @@
 <div id="splashScreen">
     <img src="icon.png" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v1.4</div>
+    <div class="splash-versao">v1.1</div>
 </div>
 
 <div class="app-container">
@@ -255,7 +255,7 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.4</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.1</div>
 
         <button class="btn-outline" onclick="abrirGerenciar('produtos')">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="abrirGerenciar('categorias')">🏷️ Gerenciar Categorias</button>
@@ -290,11 +290,11 @@
                     <option value="alarme">Alarme Curto</option>
                     <option value="beep">Beep Clássico</option>
                     <option value="bipe_rapido">Bipe Eletrônico</option>
+                    <option value="buzzer">Buzzer Ruidoso</option>
                     <option value="corneta">Corneta de Chamada</option>
+                    <option value="mecanico">Despertador Mecânico</option>
                     <option value="sino">Sino de Jantar</option>
                     <option value="sino_forte">Sino Forte</option>
-                    <option value="sirene">Sirene (Muito Alto)</option>
-                    <option value="telefone">Telefone Clássico</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomCozinha')">▶️</button>
             </div>
@@ -308,11 +308,11 @@
                     <option value="alarme">Alarme Curto</option>
                     <option value="beep">Beep Clássico</option>
                     <option value="bipe_rapido">Bipe Eletrônico</option>
+                    <option value="buzzer">Buzzer Ruidoso</option>
                     <option value="corneta">Corneta de Chamada</option>
+                    <option value="mecanico">Despertador Mecânico</option>
                     <option value="sino">Sino de Jantar</option>
                     <option value="sino_forte">Sino Forte</option>
-                    <option value="sirene">Sirene (Muito Alto)</option>
-                    <option value="telefone">Telefone Clássico</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomPanelas')">▶️</button>
             </div>
@@ -343,9 +343,9 @@
 
         <h3 style="font-size: 15px; color: #333; margin-top: 0; margin-bottom: 10px;">Backup Físico do Aparelho</h3>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="exportarDadosFisicos()">📤 Exportar (Baixar)</button>
+            <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="exportarDadosFisicos()">📤 Exportar (TXT)</button>
             <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px;" onclick="document.getElementById('fileImportacao').click()">📥 Importar</button>
-            <input type="file" id="fileImportacao" style="display:none" accept=".json" onchange="importarDadosFisicos(event)">
+            <input type="file" id="fileImportacao" style="display:none" accept=".txt,.json" onchange="importarDadosFisicos(event)">
         </div>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
@@ -430,17 +430,16 @@
 
     const hierarquiaStatus = { 'pendente': 1, 'fazendo': 2, 'enviado': 3, 'buscar': 3, 'cancelado': 4, 'concluido': 5 };
 
-    // MUDANÇA 8: Sons originais que funcionavam + Sirene de Incêndio e Telefone Antigo
     const sonsDisponiveis = { 
         "sem_som": "", 
         "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
         "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg", 
         "bipe_rapido": "https://actions.google.com/sounds/v1/alarms/dosimeter_alarm.ogg",
+        "buzzer": "https://actions.google.com/sounds/v1/alarms/buzzer_alarm.ogg",
         "corneta": "https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg",
+        "mecanico": "https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg",
         "sino": "https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg", 
-        "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg",
-        "sirene": "https://actions.google.com/sounds/v1/alarms/fire_alarm.ogg",
-        "telefone": "https://actions.google.com/sounds/v1/alarms/phone_ringing.ogg"
+        "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg"
     };
     
     let playerAlarme = new Audio(); playerAlarme.loop = true; let alarmeTocando = false; let previewAudio = null; let previewTimeout = null;
@@ -508,7 +507,6 @@
         } else { efetivarTrocaModo(novoModo); }
     }
     
-    // MUDANÇA 9: Função que checa a senha em tempo real
     function verificarSenhaModo(val) {
         if (val === "1999" || (db.configs.senhaModo && val === db.configs.senhaModo)) { 
             document.getElementById('inputSenhaModo').blur();
@@ -1023,27 +1021,39 @@
         } catch(e) { console.log("Erro nuvem."); }
     }
 
+    // Exportação modificada para TXT e uso da API de Compartilhamento Nativa (se disponível)
     function exportarDadosFisicos() {
         try {
             const dataStr = JSON.stringify(db);
-            const blob = new Blob([dataStr], { type: "application/json" });
+            const blob = new Blob([dataStr], { type: "text/plain" });
             const data = new Date();
-            const nomeArquivo = `alo_cozinha_backup_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.json`;
+            const nomeArquivo = `alo_cozinha_backup_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.txt`;
             
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = url;
-            a.download = nomeArquivo;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => { 
-                document.body.removeChild(a); 
-                window.URL.revokeObjectURL(url); 
-            }, 1000);
-        } catch(e) {
-            alert("Erro ao exportar: " + e.message);
-        }
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], nomeArquivo, {type: "text/plain"})] })) {
+                const file = new File([blob], nomeArquivo, {type: "text/plain"});
+                navigator.share({
+                    title: 'Backup Alô Cozinha',
+                    text: 'Aqui está o arquivo TXT de backup do seu restaurante.',
+                    files: [file]
+                }).catch(err => { 
+                    // Se o usuário cancelar ou der erro, faz o download padrão
+                    baixarComoArquivo(blob, nomeArquivo); 
+                });
+            } else {
+                baixarComoArquivo(blob, nomeArquivo);
+            }
+        } catch(e) { alert("Erro ao exportar: " + e.message); }
+    }
+
+    function baixarComoArquivo(blob, nomeArquivo) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = url;
+        a.download = nomeArquivo;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 1000);
     }
 
     function importarDadosFisicos(event) {
@@ -1063,7 +1073,7 @@
                     alert("❌ Arquivo inválido ou corrompido.");
                 }
             } catch(err) {
-                alert("❌ Erro ao ler o arquivo JSON.");
+                alert("❌ Erro ao ler o arquivo TXT.");
             }
         };
         reader.readAsText(file);
