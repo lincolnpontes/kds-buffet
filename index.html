@@ -170,7 +170,7 @@
         </div>
         <div class="form-group">
             <label>Digitar Observação (Opcional):</label>
-            <input type="text" id="pedidoObsText" placeholder="digite aqui">
+            <input type="text" id="pedidoObsText" placeholder="digite aqui" onfocus="if(this.value.trim() !== '' && !this.value.endsWith(', ')) this.value += ', ';">
         </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="fecharModal('modalFazerPedido')">Cancelar</button>
@@ -188,7 +188,7 @@
             <div id="obsCancelChipsContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;"></div>
         </div>
         <div class="form-group">
-            <input type="text" id="cancelarObsText" placeholder="digite aqui o motivo">
+            <input type="text" id="cancelarObsText" placeholder="digite aqui o motivo" onfocus="if(this.value.trim() !== '' && !this.value.endsWith(', ')) this.value += ', ';">
         </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="fecharModal('modalCancelarPedido')">Voltar</button>
@@ -291,10 +291,10 @@
                     <option value="alerta_espacial">Alerta Espacial</option>
                     <option value="beep">Beep Clássico</option>
                     <option value="corneta">Corneta de Chamada</option>
+                    <option value="digital">Despertador Digital</option>
                     <option value="mecanico">Despertador Mecânico</option>
                     <option value="sino">Sino de Jantar</option>
                     <option value="sino_forte">Sino Forte</option>
-                    <option value="submarino">Submarino (Muito Alto)</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomCozinha')">▶️</button>
             </div>
@@ -309,10 +309,10 @@
                     <option value="alerta_espacial">Alerta Espacial</option>
                     <option value="beep">Beep Clássico</option>
                     <option value="corneta">Corneta de Chamada</option>
+                    <option value="digital">Despertador Digital</option>
                     <option value="mecanico">Despertador Mecânico</option>
                     <option value="sino">Sino de Jantar</option>
                     <option value="sino_forte">Sino Forte</option>
-                    <option value="submarino">Submarino (Muito Alto)</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomPanelas')">▶️</button>
             </div>
@@ -338,7 +338,7 @@
             <button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Salvar URL e Puxar Dados</button>
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button id="btnSalvarNuvem" class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px; border-color:#2e7d32; color:#2e7d32;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar Prod. e Categ. na Nuvem</button>
+            <button id="btnSalvarNuvem" class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px; border-color:#2e7d32; color:#2e7d32;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar Tudo na Nuvem</button>
         </div>
 
         <h3 style="font-size: 15px; color: #333; margin-top: 0; margin-bottom: 10px;">Backup Físico do Aparelho</h3>
@@ -361,7 +361,7 @@
 
         <div class="form-group">
             <label>Problemas de Cache ou Atualização?</label>
-            <button class="btn-outline" style="border-color:#fbc02d; color:#fbc02d; justify-content:center;" onclick="forcarAtualizacao()">🔄 Forçar Atualização Suave</button>
+            <button class="btn-outline" style="border-color:#fbc02d; color:#fbc02d; justify-content:center;" onclick="forcarAtualizacao()">🔄 Atualizar Aplicativo</button>
         </div>
 
         <div class="modal-actions">
@@ -427,25 +427,20 @@
     let parametroAcao = null;
 
     let filaRetentativaStatus = JSON.parse(localStorage.getItem('kds_fila_status') || '[]');
-    
-    // CARREGAR HISTÓRICO SALVO LOCALMENTE (Evita perda de dados em reloads)
-    let savedPedidos = localStorage.getItem('kds_pedidos_local');
-    if (savedPedidos) { pedidosServidor = JSON.parse(savedPedidos); }
-    let savedCientes = localStorage.getItem('kds_cientes_local');
-    if (savedCientes) { pedidosCientes = new Set(JSON.parse(savedCientes)); }
 
     const hierarquiaStatus = { 'pendente': 1, 'fazendo': 2, 'enviado': 3, 'buscar': 3, 'cancelado': 4, 'concluido': 5 };
 
+    // REVISÃO 8: Despertador Digital no lugar do submarino
     const sonsDisponiveis = { 
         "sem_som": "", 
         "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
         "alerta_espacial": "https://actions.google.com/sounds/v1/alarms/space_alert.ogg",
         "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg", 
         "corneta": "https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg",
+        "digital": "https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg",
         "mecanico": "https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg",
         "sino": "https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg", 
-        "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg",
-        "submarino": "https://actions.google.com/sounds/v1/alarms/submarine_dive_horn.ogg"
+        "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg"
     };
     
     let playerAlarme = new Audio(); playerAlarme.loop = true; let alarmeTocando = false; let previewAudio = null; let previewTimeout = null;
@@ -497,13 +492,27 @@
     function salvarBancoLocal() { localStorage.setItem('kds_v1_db', JSON.stringify(db)); }
     function salvarFilaStatus() { localStorage.setItem('kds_fila_status', JSON.stringify(filaRetentativaStatus)); }
 
-    // FUNÇÃO QUE SALVA O HISTÓRICO ATUAL NO APARELHO (Backup invisível)
-    function salvarHistoricoLocal() {
-        localStorage.setItem('kds_pedidos_local', JSON.stringify(pedidosServidor));
-        localStorage.setItem('kds_cientes_local', JSON.stringify(Array.from(pedidosCientes)));
+    // REVISÃO 10: Backup 100% focado na nuvem a cada 1 minuto
+    async function salvarTudoNaNuvemAuto() {
+        if(!db.configs.url || !db.configs.dadosBaixados) return;
+        try {
+            await fetch(db.configs.url, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: JSON.stringify({ 
+                    action: 'salvar_banco', 
+                    dados: { 
+                        produtos: db.produtos, 
+                        categorias: db.categorias, 
+                        obsPedidos: db.obsPedidos, 
+                        obsCancelamentos: db.obsCancelamentos,
+                        pedidos: pedidosServidor // Inclui os pedidos ativos!
+                    } 
+                }) 
+            });
+        } catch(e) {}
     }
-    // Roda a cada 60 segundos
-    setInterval(salvarHistoricoLocal, 60000);
+    setInterval(salvarTudoNaNuvemAuto, 60000);
 
     function getTempoRelativo(timestamp) {
         const diffEmMs = Date.now() - new Date(timestamp).getTime();
@@ -591,7 +600,19 @@
         document.getElementById('modalCancelarPedido').style.display = 'flex';
     }
 
-    function addObsToText(inputID, obsStr) { const input = document.getElementById(inputID); if(input.value.trim() === '') input.value = obsStr; else input.value += ', ' + obsStr; input.focus(); }
+    // REVISÃO 12: Função não dá mais 'focus()' para evitar subir o teclado/tela
+    function addObsToText(inputID, obsStr) { 
+        const input = document.getElementById(inputID); 
+        if (input.value.trim() === '') {
+            input.value = obsStr;
+        } else {
+            if (input.value.endsWith(', ')) {
+                input.value += obsStr;
+            } else {
+                input.value += ', ' + obsStr;
+            }
+        }
+    }
 
     async function enviarPedidoConfirmado() {
         const nome = document.getElementById('pedidoItemNome').value; const obsText = document.getElementById('pedidoObsText').value.trim();
@@ -638,7 +659,6 @@
             if(motivo) pedidoLocal.motivo = motivo;
         }
         renderizarListaCozinha();
-        salvarHistoricoLocal();
         
         let payload = { action: (novoStatus === 'cancelado' ? 'cancelar_pedido' : 'atualizar_status'), id: id, novoStatus: novoStatus };
         if(motivo) payload.motivo = motivo;
@@ -684,8 +704,6 @@
                 }
                 return pServ;
             });
-            
-            salvarHistoricoLocal();
 
             if(db.configs.modo === 'cozinha') { renderizarListaCozinha(); } else { renderizarUltimosPedidos(); }
             gerenciarAlarme();
@@ -694,7 +712,7 @@
         }
     }
 
-    function darCiencia(id) { pedidosCientes.add(id.toString()); salvarHistoricoLocal(); renderizarUltimosPedidos(); gerenciarAlarme(); }
+    function darCiencia(id) { pedidosCientes.add(id.toString()); renderizarUltimosPedidos(); gerenciarAlarme(); }
 
     function renderizarUltimosPedidos() {
         const lista = document.getElementById('listaUltimosPedidosPanelas'); const agora = Date.now(); lista.innerHTML = '';
@@ -870,25 +888,23 @@
         let frase = document.getElementById('inputExcluirTudo').value;
         if (frase === "quero excluir todo o histórico") {
             pedidosServidor = [];
-            salvarHistoricoLocal();
             fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'excluir_tudo' }) });
             alert("Histórico global apagado!");
             forcarAtualizacao();
         } else { alert("Frase de segurança incorreta."); }
     }
 
-    // ATUALIZAÇÃO SUAVE SEM PERDER A URL E SALVANDO NA NUVEM ANTES
+    // REVISÃO 11: Apenas o nome do botão mudou. A inteligência de atualizar é a mesma.
     async function forcarAtualizacao() {
-        if (confirm("Deseja salvar as configurações e o cardápio na nuvem antes de recarregar? (O histórico de hoje é guardado localmente)")) {
+        if (confirm("Deseja salvar as configurações e o cardápio na nuvem antes de recarregar?")) {
             if (!db.configs.url) { 
                 alert("Sem URL salva. A atualização será continuada."); 
             } else {
                 try {
-                    await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos } }) });
+                    await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos, pedidos: pedidosServidor } }) });
                 } catch(e) { }
             }
         }
-        salvarHistoricoLocal();
         sessionStorage.clear();
         
         if ('caches' in window) {
@@ -1014,6 +1030,7 @@
         });
     }
 
+    // Botão de salvar tudo na nuvem manualmente
     async function sincronizarSalvarNuvem() {
         if(!db.configs.url) return alert("Salve a URL primeiro!");
         
@@ -1024,13 +1041,13 @@
         try { 
             const btn = document.getElementById('btnSalvarNuvem');
             if(btn) btn.innerText = "Salvando..."; 
-            await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos } }) }); 
+            await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos, pedidos: pedidosServidor } }) }); 
             alert("Salvo na Nuvem com sucesso!"); 
-            if(btn) btn.innerText = "⬆️ Salvar Prod. e Categ. na Nuvem";
+            if(btn) btn.innerText = "⬆️ Salvar Tudo na Nuvem";
         } catch(e) { 
             alert("Erro de conexão ao salvar."); 
             const btn = document.getElementById('btnSalvarNuvem');
-            if(btn) btn.innerText = "⬆️ Salvar Prod. e Categ. na Nuvem";
+            if(btn) btn.innerText = "⬆️ Salvar Tudo na Nuvem";
         } 
     }
 
@@ -1051,6 +1068,11 @@
                 db.obsPedidos = nuvemDB.obsPedidos || ["Sem sal", "Pouco óleo"]; 
                 db.obsCancelamentos = nuvemDB.obsCancelamentos || ["Falta de insumo", "Queimou"]; 
                 
+                // Puxa o histórico que foi salvo no backup se existir no banco da nuvem
+                if(nuvemDB.pedidos) {
+                    pedidosServidor = nuvemDB.pedidos;
+                }
+                
                 db.configs.dadosBaixados = true; 
                 
                 salvarBancoLocal(); 
@@ -1059,10 +1081,8 @@
         } catch(e) { console.log("Erro nuvem."); }
     }
 
-    // Exportação em .TXT contendo TUDO (Inclusive os pedidos que estão na memória)
     function exportarDadosFisicos() {
         try {
-            // Empacota o banco e o histórico ativo juntos
             const dataToExport = { db: db, pedidos: pedidosServidor, cientes: Array.from(pedidosCientes) };
             const dataStr = JSON.stringify(dataToExport);
             const blob = new Blob([dataStr], { type: "text/plain" });
@@ -1101,7 +1121,6 @@
             try {
                 const importedData = JSON.parse(e.target.result);
                 
-                // Reconhece o formato novo (com histórico) ou o formato antigo
                 if (importedData.db && importedData.db.produtos) {
                     db = importedData.db;
                     if(importedData.pedidos) pedidosServidor = importedData.pedidos;
@@ -1115,7 +1134,6 @@
 
                 db.configs.dadosBaixados = true; 
                 salvarBancoLocal();
-                salvarHistoricoLocal();
                 
                 alert("✅ Banco de dados restaurado com sucesso! O aplicativo será recarregado.");
                 location.reload();
@@ -1135,7 +1153,9 @@
         db.configs.telaAtiva = document.getElementById('configTelaAtiva').value; 
         db.configs.inatividade = document.getElementById('configInatividade').value; 
         salvarBancoLocal(); 
-        salvarHistoricoLocal(); // Salva o histórico ao fechar as configs
+        
+        salvarTudoNaNuvemAuto(); // Força o salvamento na nuvem ao fechar as opções
+
         solicitarWakeLock(); 
         resetInatividade(); 
         gerenciarAlarme(); 
@@ -1227,13 +1247,11 @@
             if (acaoPendente === 'zerar_expediente') {
                 const dataHoje = new Date().toDateString();
                 pedidosServidor = pedidosServidor.filter(p => new Date(p.timestamp).toDateString() !== dataHoje);
-                salvarHistoricoLocal();
                 abrirHistorico(); renderizarUltimosPedidos(); renderizarListaCozinha();
                 fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'excluir_hoje' }) });
                 alert("Expediente zerado com sucesso!");
             } else if (acaoPendente === 'excluir_item') {
                 pedidosServidor = pedidosServidor.filter(p => p.id != parametroAcao); 
-                salvarHistoricoLocal();
                 abrirHistorico();
                 fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'excluir_pedido', id: parametroAcao }) });
             }
