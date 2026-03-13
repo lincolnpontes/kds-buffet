@@ -288,13 +288,13 @@
                 <select id="configSomCozinha" style="flex:1;">
                     <option value="sem_som">Sem som</option>
                     <option value="alarme">Alarme Curto</option>
+                    <option value="alerta_espacial">Alerta Espacial</option>
                     <option value="beep">Beep Clássico</option>
-                    <option value="bipe_rapido">Bipe Eletrônico</option>
-                    <option value="buzzer">Buzzer Ruidoso</option>
                     <option value="corneta">Corneta de Chamada</option>
                     <option value="mecanico">Despertador Mecânico</option>
                     <option value="sino">Sino de Jantar</option>
                     <option value="sino_forte">Sino Forte</option>
+                    <option value="submarino">Submarino (Muito Alto)</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomCozinha')">▶️</button>
             </div>
@@ -306,13 +306,13 @@
                 <select id="configSomPanelas" style="flex:1;">
                     <option value="sem_som">Sem som</option>
                     <option value="alarme">Alarme Curto</option>
+                    <option value="alerta_espacial">Alerta Espacial</option>
                     <option value="beep">Beep Clássico</option>
-                    <option value="bipe_rapido">Bipe Eletrônico</option>
-                    <option value="buzzer">Buzzer Ruidoso</option>
                     <option value="corneta">Corneta de Chamada</option>
                     <option value="mecanico">Despertador Mecânico</option>
                     <option value="sino">Sino de Jantar</option>
                     <option value="sino_forte">Sino Forte</option>
+                    <option value="submarino">Submarino (Muito Alto)</option>
                 </select>
                 <button class="btn-cancel" style="padding: 10px;" onclick="tocarPreview('configSomPanelas')">▶️</button>
             </div>
@@ -361,7 +361,7 @@
 
         <div class="form-group">
             <label>Problemas de Cache ou Atualização?</label>
-            <button class="btn-outline" style="border-color:#fbc02d; color:#fbc02d; justify-content:center;" onclick="forcarAtualizacao()">🔄 Forçar Atualização (Limpar Cache)</button>
+            <button class="btn-outline" style="border-color:#fbc02d; color:#fbc02d; justify-content:center;" onclick="forcarAtualizacao()">🔄 Forçar Atualização Suave</button>
         </div>
 
         <div class="modal-actions">
@@ -427,19 +427,25 @@
     let parametroAcao = null;
 
     let filaRetentativaStatus = JSON.parse(localStorage.getItem('kds_fila_status') || '[]');
+    
+    // CARREGAR HISTÓRICO SALVO LOCALMENTE (Evita perda de dados em reloads)
+    let savedPedidos = localStorage.getItem('kds_pedidos_local');
+    if (savedPedidos) { pedidosServidor = JSON.parse(savedPedidos); }
+    let savedCientes = localStorage.getItem('kds_cientes_local');
+    if (savedCientes) { pedidosCientes = new Set(JSON.parse(savedCientes)); }
 
     const hierarquiaStatus = { 'pendente': 1, 'fazendo': 2, 'enviado': 3, 'buscar': 3, 'cancelado': 4, 'concluido': 5 };
 
     const sonsDisponiveis = { 
         "sem_som": "", 
         "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
+        "alerta_espacial": "https://actions.google.com/sounds/v1/alarms/space_alert.ogg",
         "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg", 
-        "bipe_rapido": "https://actions.google.com/sounds/v1/alarms/dosimeter_alarm.ogg",
-        "buzzer": "https://actions.google.com/sounds/v1/alarms/buzzer_alarm.ogg",
         "corneta": "https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg",
         "mecanico": "https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg",
         "sino": "https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg", 
-        "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg"
+        "sino_forte": "https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg",
+        "submarino": "https://actions.google.com/sounds/v1/alarms/submarine_dive_horn.ogg"
     };
     
     let playerAlarme = new Audio(); playerAlarme.loop = true; let alarmeTocando = false; let previewAudio = null; let previewTimeout = null;
@@ -490,6 +496,14 @@
     }
     function salvarBancoLocal() { localStorage.setItem('kds_v1_db', JSON.stringify(db)); }
     function salvarFilaStatus() { localStorage.setItem('kds_fila_status', JSON.stringify(filaRetentativaStatus)); }
+
+    // FUNÇÃO QUE SALVA O HISTÓRICO ATUAL NO APARELHO (Backup invisível)
+    function salvarHistoricoLocal() {
+        localStorage.setItem('kds_pedidos_local', JSON.stringify(pedidosServidor));
+        localStorage.setItem('kds_cientes_local', JSON.stringify(Array.from(pedidosCientes)));
+    }
+    // Roda a cada 60 segundos
+    setInterval(salvarHistoricoLocal, 60000);
 
     function getTempoRelativo(timestamp) {
         const diffEmMs = Date.now() - new Date(timestamp).getTime();
@@ -624,6 +638,7 @@
             if(motivo) pedidoLocal.motivo = motivo;
         }
         renderizarListaCozinha();
+        salvarHistoricoLocal();
         
         let payload = { action: (novoStatus === 'cancelado' ? 'cancelar_pedido' : 'atualizar_status'), id: id, novoStatus: novoStatus };
         if(motivo) payload.motivo = motivo;
@@ -670,6 +685,8 @@
                 return pServ;
             });
             
+            salvarHistoricoLocal();
+
             if(db.configs.modo === 'cozinha') { renderizarListaCozinha(); } else { renderizarUltimosPedidos(); }
             gerenciarAlarme();
         } catch(e) { 
@@ -677,7 +694,7 @@
         }
     }
 
-    function darCiencia(id) { pedidosCientes.add(id.toString()); renderizarUltimosPedidos(); gerenciarAlarme(); }
+    function darCiencia(id) { pedidosCientes.add(id.toString()); salvarHistoricoLocal(); renderizarUltimosPedidos(); gerenciarAlarme(); }
 
     function renderizarUltimosPedidos() {
         const lista = document.getElementById('listaUltimosPedidosPanelas'); const agora = Date.now(); lista.innerHTML = '';
@@ -853,13 +870,34 @@
         let frase = document.getElementById('inputExcluirTudo').value;
         if (frase === "quero excluir todo o histórico") {
             pedidosServidor = [];
+            salvarHistoricoLocal();
             fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'excluir_tudo' }) });
             alert("Histórico global apagado!");
             forcarAtualizacao();
         } else { alert("Frase de segurança incorreta."); }
     }
 
-    function forcarAtualizacao() { localStorage.removeItem('kds_v1_db'); sessionStorage.clear(); window.location.reload(true); }
+    // ATUALIZAÇÃO SUAVE SEM PERDER A URL E SALVANDO NA NUVEM ANTES
+    async function forcarAtualizacao() {
+        if (confirm("Deseja salvar as configurações e o cardápio na nuvem antes de recarregar? (O histórico de hoje é guardado localmente)")) {
+            if (!db.configs.url) { 
+                alert("Sem URL salva. A atualização será continuada."); 
+            } else {
+                try {
+                    await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos } }) });
+                } catch(e) { }
+            }
+        }
+        salvarHistoricoLocal();
+        sessionStorage.clear();
+        
+        if ('caches' in window) {
+            caches.keys().then((names) => {
+                names.forEach(name => { caches.delete(name); });
+            });
+        }
+        setTimeout(() => window.location.reload(true), 300);
+    }
 
     function abrirModalMetricas() {
         fecharModal('modalPainelUnificado');
@@ -1021,10 +1059,12 @@
         } catch(e) { console.log("Erro nuvem."); }
     }
 
-    // Exportação modificada para TXT e uso da API de Compartilhamento Nativa (se disponível)
+    // Exportação em .TXT contendo TUDO (Inclusive os pedidos que estão na memória)
     function exportarDadosFisicos() {
         try {
-            const dataStr = JSON.stringify(db);
+            // Empacota o banco e o histórico ativo juntos
+            const dataToExport = { db: db, pedidos: pedidosServidor, cientes: Array.from(pedidosCientes) };
+            const dataStr = JSON.stringify(dataToExport);
             const blob = new Blob([dataStr], { type: "text/plain" });
             const data = new Date();
             const nomeArquivo = `alo_cozinha_backup_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.txt`;
@@ -1033,12 +1073,9 @@
                 const file = new File([blob], nomeArquivo, {type: "text/plain"});
                 navigator.share({
                     title: 'Backup Alô Cozinha',
-                    text: 'Aqui está o arquivo TXT de backup do seu restaurante.',
+                    text: 'Aqui está o arquivo TXT com o cardápio e os pedidos do restaurante.',
                     files: [file]
-                }).catch(err => { 
-                    // Se o usuário cancelar ou der erro, faz o download padrão
-                    baixarComoArquivo(blob, nomeArquivo); 
-                });
+                }).catch(err => { baixarComoArquivo(blob, nomeArquivo); });
             } else {
                 baixarComoArquivo(blob, nomeArquivo);
             }
@@ -1062,16 +1099,26 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                const importedDB = JSON.parse(e.target.result);
-                if (importedDB && importedDB.produtos && importedDB.configs) {
-                    db = importedDB;
-                    db.configs.dadosBaixados = true; 
-                    salvarBancoLocal();
-                    alert("✅ Banco de dados restaurado com sucesso! O aplicativo será recarregado.");
-                    location.reload();
+                const importedData = JSON.parse(e.target.result);
+                
+                // Reconhece o formato novo (com histórico) ou o formato antigo
+                if (importedData.db && importedData.db.produtos) {
+                    db = importedData.db;
+                    if(importedData.pedidos) pedidosServidor = importedData.pedidos;
+                    if(importedData.cientes) pedidosCientes = new Set(importedData.cientes);
+                } else if (importedData.produtos) {
+                    db = importedData;
                 } else {
                     alert("❌ Arquivo inválido ou corrompido.");
+                    return;
                 }
+
+                db.configs.dadosBaixados = true; 
+                salvarBancoLocal();
+                salvarHistoricoLocal();
+                
+                alert("✅ Banco de dados restaurado com sucesso! O aplicativo será recarregado.");
+                location.reload();
             } catch(err) {
                 alert("❌ Erro ao ler o arquivo TXT.");
             }
@@ -1081,7 +1128,20 @@
 
     function salvarURL() { const urlInput = document.getElementById('configUrlApp').value.trim(); if(urlInput === "") return alert("Vazio."); db.configs.url = urlInput; salvarBancoLocal(); sincronizarPuxarNuvem(false); alert("URL salva e testada! (Aguarde alguns segundos para carregamento completo)"); }
 
-    function fecharPainelUnificado() { db.configs.senhaModo = document.getElementById('configSenhaModo').value; db.configs.somCozinha = document.getElementById('configSomCozinha').value; db.configs.somPanelas = document.getElementById('configSomPanelas').value; db.configs.telaAtiva = document.getElementById('configTelaAtiva').value; db.configs.inatividade = document.getElementById('configInatividade').value; salvarBancoLocal(); solicitarWakeLock(); resetInatividade(); gerenciarAlarme(); if(previewAudio) { previewAudio.pause(); } fecharModal('modalPainelUnificado'); }
+    function fecharPainelUnificado() { 
+        db.configs.senhaModo = document.getElementById('configSenhaModo').value; 
+        db.configs.somCozinha = document.getElementById('configSomCozinha').value; 
+        db.configs.somPanelas = document.getElementById('configSomPanelas').value; 
+        db.configs.telaAtiva = document.getElementById('configTelaAtiva').value; 
+        db.configs.inatividade = document.getElementById('configInatividade').value; 
+        salvarBancoLocal(); 
+        salvarHistoricoLocal(); // Salva o histórico ao fechar as configs
+        solicitarWakeLock(); 
+        resetInatividade(); 
+        gerenciarAlarme(); 
+        if(previewAudio) { previewAudio.pause(); } 
+        fecharModal('modalPainelUnificado'); 
+    }
     
     function voltarParaPainelGeral() { fecharModal('modalListagem'); document.getElementById('modalPainelUnificado').style.display = 'flex'; }
 
@@ -1167,11 +1227,13 @@
             if (acaoPendente === 'zerar_expediente') {
                 const dataHoje = new Date().toDateString();
                 pedidosServidor = pedidosServidor.filter(p => new Date(p.timestamp).toDateString() !== dataHoje);
+                salvarHistoricoLocal();
                 abrirHistorico(); renderizarUltimosPedidos(); renderizarListaCozinha();
                 fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'excluir_hoje' }) });
                 alert("Expediente zerado com sucesso!");
             } else if (acaoPendente === 'excluir_item') {
                 pedidosServidor = pedidosServidor.filter(p => p.id != parametroAcao); 
+                salvarHistoricoLocal();
                 abrirHistorico();
                 fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'excluir_pedido', id: parametroAcao }) });
             }
