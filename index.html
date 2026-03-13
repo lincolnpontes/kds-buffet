@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v1.1</title>
+    <title>Alô Cozinha v1.1.1</title>
 
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overflow: hidden; position: fixed; width: 100%; height: 100%; }
@@ -102,7 +102,7 @@
 <div id="splashScreen">
     <img src="icon.png" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v1.1</div>
+    <div class="splash-versao">v1.1.1</div>
 </div>
 
 <div class="app-container">
@@ -255,7 +255,7 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.1</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.1.1</div>
 
         <button class="btn-outline" onclick="abrirGerenciar('produtos')">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="abrirGerenciar('categorias')">🏷️ Gerenciar Categorias</button>
@@ -288,8 +288,8 @@
                 <select id="configSomCozinha" style="flex:1;">
                     <option value="sem_som">Sem som</option>
                     <option value="alarme">Alarme Curto</option>
-                    <option value="alerta_espacial">Alerta Espacial</option>
                     <option value="beep">Beep Clássico</option>
+                    <option value="bipe_duplo">Bipe Duplo</option>
                     <option value="corneta">Corneta de Chamada</option>
                     <option value="digital">Despertador Digital</option>
                     <option value="mecanico">Despertador Mecânico</option>
@@ -306,8 +306,8 @@
                 <select id="configSomPanelas" style="flex:1;">
                     <option value="sem_som">Sem som</option>
                     <option value="alarme">Alarme Curto</option>
-                    <option value="alerta_espacial">Alerta Espacial</option>
                     <option value="beep">Beep Clássico</option>
+                    <option value="bipe_duplo">Bipe Duplo</option>
                     <option value="corneta">Corneta de Chamada</option>
                     <option value="digital">Despertador Digital</option>
                     <option value="mecanico">Despertador Mecânico</option>
@@ -427,15 +427,20 @@
     let parametroAcao = null;
 
     let filaRetentativaStatus = JSON.parse(localStorage.getItem('kds_fila_status') || '[]');
+    
+    // CARREGAR HISTÓRICO SALVO LOCALMENTE (Evita perda de dados em reloads)
+    let savedPedidos = localStorage.getItem('kds_pedidos_local');
+    if (savedPedidos) { pedidosServidor = JSON.parse(savedPedidos); }
+    let savedCientes = localStorage.getItem('kds_cientes_local');
+    if (savedCientes) { pedidosCientes = new Set(JSON.parse(savedCientes)); }
 
     const hierarquiaStatus = { 'pendente': 1, 'fazendo': 2, 'enviado': 3, 'buscar': 3, 'cancelado': 4, 'concluido': 5 };
 
-    // REVISÃO 8: Despertador Digital no lugar do submarino
     const sonsDisponiveis = { 
         "sem_som": "", 
         "alarme": "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
-        "alerta_espacial": "https://actions.google.com/sounds/v1/alarms/space_alert.ogg",
         "beep": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg", 
+        "bipe_duplo": "https://actions.google.com/sounds/v1/alarms/double_beep.ogg",
         "corneta": "https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg",
         "digital": "https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg",
         "mecanico": "https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg",
@@ -492,7 +497,14 @@
     function salvarBancoLocal() { localStorage.setItem('kds_v1_db', JSON.stringify(db)); }
     function salvarFilaStatus() { localStorage.setItem('kds_fila_status', JSON.stringify(filaRetentativaStatus)); }
 
-    // REVISÃO 10: Backup 100% focado na nuvem a cada 1 minuto
+    // SALVAMENTO APENAS NO DISPOSITIVO (Segurança contra reload)
+    function salvarHistoricoLocal() {
+        localStorage.setItem('kds_pedidos_local', JSON.stringify(pedidosServidor));
+        localStorage.setItem('kds_cientes_local', JSON.stringify(Array.from(pedidosCientes)));
+    }
+    setInterval(salvarHistoricoLocal, 60000); // Salva fisicamente no aparelho apenas
+
+    // SALVAMENTO GLOBAL NA NUVEM (Acionado agora apenas no Painel de Controle)
     async function salvarTudoNaNuvemAuto() {
         if(!db.configs.url || !db.configs.dadosBaixados) return;
         try {
@@ -506,13 +518,12 @@
                         categorias: db.categorias, 
                         obsPedidos: db.obsPedidos, 
                         obsCancelamentos: db.obsCancelamentos,
-                        pedidos: pedidosServidor // Inclui os pedidos ativos!
+                        pedidos: pedidosServidor
                     } 
                 }) 
             });
         } catch(e) {}
     }
-    setInterval(salvarTudoNaNuvemAuto, 60000);
 
     function getTempoRelativo(timestamp) {
         const diffEmMs = Date.now() - new Date(timestamp).getTime();
@@ -600,18 +611,19 @@
         document.getElementById('modalCancelarPedido').style.display = 'flex';
     }
 
-    // REVISÃO 12: Função não dá mais 'focus()' para evitar subir o teclado/tela
+    // REVISÃO 12: Efeito Liga/Desliga. Se a observação já está na caixa, ele retira. Se não, adiciona.
     function addObsToText(inputID, obsStr) { 
         const input = document.getElementById(inputID); 
-        if (input.value.trim() === '') {
-            input.value = obsStr;
+        let parts = input.value.split(',').map(s => s.trim()).filter(s => s !== '');
+        
+        let index = parts.indexOf(obsStr);
+        if (index > -1) {
+            parts.splice(index, 1); // Remove a observação
         } else {
-            if (input.value.endsWith(', ')) {
-                input.value += obsStr;
-            } else {
-                input.value += ', ' + obsStr;
-            }
+            parts.push(obsStr); // Adiciona a observação
         }
+        
+        input.value = parts.join(', ');
     }
 
     async function enviarPedidoConfirmado() {
@@ -659,6 +671,7 @@
             if(motivo) pedidoLocal.motivo = motivo;
         }
         renderizarListaCozinha();
+        salvarHistoricoLocal();
         
         let payload = { action: (novoStatus === 'cancelado' ? 'cancelar_pedido' : 'atualizar_status'), id: id, novoStatus: novoStatus };
         if(motivo) payload.motivo = motivo;
@@ -712,7 +725,7 @@
         }
     }
 
-    function darCiencia(id) { pedidosCientes.add(id.toString()); renderizarUltimosPedidos(); gerenciarAlarme(); }
+    function darCiencia(id) { pedidosCientes.add(id.toString()); salvarHistoricoLocal(); renderizarUltimosPedidos(); gerenciarAlarme(); }
 
     function renderizarUltimosPedidos() {
         const lista = document.getElementById('listaUltimosPedidosPanelas'); const agora = Date.now(); lista.innerHTML = '';
@@ -894,7 +907,6 @@
         } else { alert("Frase de segurança incorreta."); }
     }
 
-    // REVISÃO 11: Apenas o nome do botão mudou. A inteligência de atualizar é a mesma.
     async function forcarAtualizacao() {
         if (confirm("Deseja salvar as configurações e o cardápio na nuvem antes de recarregar?")) {
             if (!db.configs.url) { 
@@ -1030,7 +1042,6 @@
         });
     }
 
-    // Botão de salvar tudo na nuvem manualmente
     async function sincronizarSalvarNuvem() {
         if(!db.configs.url) return alert("Salve a URL primeiro!");
         
@@ -1068,7 +1079,6 @@
                 db.obsPedidos = nuvemDB.obsPedidos || ["Sem sal", "Pouco óleo"]; 
                 db.obsCancelamentos = nuvemDB.obsCancelamentos || ["Falta de insumo", "Queimou"]; 
                 
-                // Puxa o histórico que foi salvo no backup se existir no banco da nuvem
                 if(nuvemDB.pedidos) {
                     pedidosServidor = nuvemDB.pedidos;
                 }
@@ -1154,7 +1164,7 @@
         db.configs.inatividade = document.getElementById('configInatividade').value; 
         salvarBancoLocal(); 
         
-        salvarTudoNaNuvemAuto(); // Força o salvamento na nuvem ao fechar as opções
+        salvarTudoNaNuvemAuto();
 
         solicitarWakeLock(); 
         resetInatividade(); 
