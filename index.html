@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v1.1.2</title>
+    <title>Alô Cozinha v1.1.3</title>
 
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overflow: hidden; position: fixed; width: 100%; height: 100%; }
@@ -102,7 +102,7 @@
 <div id="splashScreen">
     <img src="icon.png" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v1.1.2</div>
+    <div class="splash-versao">v1.1.3</div>
 </div>
 
 <div class="app-container">
@@ -255,7 +255,7 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.1.2</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v1.1.3</div>
 
         <button class="btn-outline" onclick="abrirGerenciar('produtos')">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="abrirGerenciar('categorias')">🏷️ Gerenciar Categorias</button>
@@ -335,9 +335,11 @@
         <div class="form-group">
             <label>URL Google Script:</label>
             <input type="text" id="configUrlApp" placeholder="https://script.google.com/macros/s/...">
-            <button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Salvar URL e Puxar Dados</button>
+            <button class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Salvar URL Inicial</button>
         </div>
+        
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px; border-color:#1976D2; color:#1976D2;" onclick="sincronizarPuxarNuvem(true)">⬇️ Puxar Tudo da Nuvem</button>
             <button id="btnSalvarNuvem" class="btn-outline" style="margin: 0; flex: 1; justify-content: center; font-size: 13px; border-color:#2e7d32; color:#2e7d32;" onclick="sincronizarSalvarNuvem()">⬆️ Salvar Tudo na Nuvem</button>
         </div>
 
@@ -611,16 +613,15 @@
         document.getElementById('modalCancelarPedido').style.display = 'flex';
     }
 
-    // Efeito Liga/Desliga. Se a observação já está na caixa, ele retira. Se não, adiciona.
     function addObsToText(inputID, obsStr) { 
         const input = document.getElementById(inputID); 
         let parts = input.value.split(',').map(s => s.trim()).filter(s => s !== '');
         
         let index = parts.indexOf(obsStr);
         if (index > -1) {
-            parts.splice(index, 1); // Remove a observação
+            parts.splice(index, 1); 
         } else {
-            parts.push(obsStr); // Adiciona a observação
+            parts.push(obsStr); 
         }
         
         input.value = parts.join(', ');
@@ -690,12 +691,17 @@
         alterarStatusPedido(id, 'cancelado', motivo);
     }
 
+    // REVISÃO 1: Cache-Buster 100% à prova de falhas para baixar pedidos
     async function syncGeral() {
         if(!db.configs.url) return;
         processarFilaRetentativas(); 
 
         try {
-            const resp = await fetch(db.configs.url);
+            let fetchUrl = db.configs.url;
+            fetchUrl += fetchUrl.includes('?') ? '&' : '?';
+            fetchUrl += "cb=" + Date.now(); // ANTI-CACHE AGRESSIVO
+
+            const resp = await fetch(fetchUrl);
             const dadosServidor = await resp.json();
             document.getElementById('indicadorConexao').innerHTML = '🟢'; 
             
@@ -907,7 +913,6 @@
         } else { alert("Frase de segurança incorreta."); }
     }
 
-    // RESOLVIDO: Atualiza na hora! Destrói o Service Worker antigo e força o link com timestamp
     async function forcarAtualizacao() {
         if (confirm("Deseja salvar as configurações e o cardápio na nuvem antes de recarregar?")) {
             if (!db.configs.url) { 
@@ -915,29 +920,24 @@
             } else {
                 try {
                     const btn = document.getElementById('btnAtualizarApp');
-                    if(btn) btn.innerText = "Salvando...";
+                    if(btn) btn.innerText = "Salvando..."; 
                     await fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'salvar_banco', dados: { produtos: db.produtos, categorias: db.categorias, obsPedidos: db.obsPedidos, obsCancelamentos: db.obsCancelamentos, pedidos: pedidosServidor } }) });
                 } catch(e) { }
             }
         }
-        
         sessionStorage.clear();
         
-        // Limpa agressivamente o cache
         if ('caches' in window) {
             const names = await caches.keys();
             await Promise.all(names.map(name => caches.delete(name)));
         }
 
-        // Mata os Service Workers que estão segurando a versão velha
         if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (let registration of registrations) {
                 await registration.unregister();
             }
         }
-        
-        // Adiciona um identificador único na URL para enganar a memória do navegador
         window.location.href = window.location.pathname + '?t=' + new Date().getTime();
     }
 
@@ -1060,7 +1060,7 @@
         if(!db.configs.url) return alert("Salve a URL primeiro!");
         
         if(!db.configs.dadosBaixados) {
-            return alert("⚠️ AÇÃO BLOQUEADA:\n\nVocê precisa primeiro clicar em 'Salvar URL e Puxar Dados' para sincronizar com o servidor.\n\nEssa trava impede que você salve um banco de dados vazio por cima do seu cardápio oficial na nuvem!");
+            return alert("⚠️ AÇÃO BLOQUEADA:\n\nVocê precisa primeiro puxar os dados da nuvem para sincronizar com o servidor.\n\nEssa trava impede que você salve um banco de dados vazio por cima do seu cardápio oficial na nuvem!");
         }
 
         try { 
@@ -1076,11 +1076,17 @@
         } 
     }
 
+    // REVISÃO 1: Puxar Nuvem Anti-Cache com recarregamento na tela
     async function sincronizarPuxarNuvem(pedirConfirmacao) {
         if(!db.configs.url) return;
-        if(pedirConfirmacao && !confirm("Deseja puxar dados da nuvem?")) return; 
+        if(pedirConfirmacao && !confirm("ATENÇÃO: Este aparelho será atualizado com o cardápio e os itens que estão na nuvem. Deseja continuar?")) return; 
         try {
-            let res = await fetch(db.configs.url + "?action=carregar_banco"); let nuvemDB = await res.json();
+            let urlAction = db.configs.url;
+            urlAction += urlAction.includes('?') ? '&' : '?';
+            urlAction += "action=carregar_banco&cb=" + Date.now(); // ANTI-CACHE AGRESSIVO
+
+            let res = await fetch(urlAction); 
+            let nuvemDB = await res.json();
             
             if(!nuvemDB.obsCancelamentos && nuvemDB.produtos === undefined) {
                 alert("⛔ ERRO DE URL (BANCO INCOMPATÍVEL)!\n\nEste link não pertence ao banco de dados do Alô Cozinha. A operação foi abortada para proteger seu equipamento.\n\nVerifique a URL colada.");
@@ -1100,9 +1106,16 @@
                 db.configs.dadosBaixados = true; 
                 
                 salvarBancoLocal(); 
-                if(pedirConfirmacao) { alert("Sucesso!"); location.reload(); } else { iniciar(); } 
+                salvarHistoricoLocal();
+
+                if(pedirConfirmacao) { 
+                    alert("✅ Cardápio e configurações puxados com sucesso!"); 
+                    location.reload(); 
+                } else { 
+                    iniciar(); 
+                } 
             }
-        } catch(e) { console.log("Erro nuvem."); }
+        } catch(e) { console.log("Erro nuvem.", e); alert("❌ Falha ao puxar. O cache do servidor ou erro de internet impediu o download."); }
     }
 
     function exportarDadosFisicos() {
@@ -1168,7 +1181,14 @@
         reader.readAsText(file);
     }
 
-    function salvarURL() { const urlInput = document.getElementById('configUrlApp').value.trim(); if(urlInput === "") return alert("Vazio."); db.configs.url = urlInput; salvarBancoLocal(); sincronizarPuxarNuvem(false); alert("URL salva e testada! (Aguarde alguns segundos para carregamento completo)"); }
+    // REVISÃO 2: Salvar URL agora apenas salva. Para baixar ativamente, tem o botão Puxar
+    function salvarURL() { 
+        const urlInput = document.getElementById('configUrlApp').value.trim(); 
+        if(urlInput === "") return alert("Vazio."); 
+        db.configs.url = urlInput; 
+        salvarBancoLocal(); 
+        alert("URL salva no sistema! Clique em 'Puxar Tudo da Nuvem' para carregar os dados."); 
+    }
 
     function fecharPainelUnificado() { 
         db.configs.senhaModo = document.getElementById('configSenhaModo').value; 
