@@ -172,9 +172,11 @@
             <label>Digitar Observação (Opcional):</label>
             <input type="text" id="pedidoObsText" placeholder="digite aqui" onfocus="if(this.value.trim() !== '' && !this.value.endsWith(', ')) this.value += ', ';">
         </div>
-        <div class="modal-actions">
-            <button class="btn-cancel" onclick="fecharModal('modalFazerPedido')">Cancelar</button>
-            <button class="btn-action" style="background: #2e7d32;" onclick="enviarPedidoConfirmado()">Confirmar</button>
+        
+        <!-- BOTÕES REDESENHADOS -->
+        <div class="modal-actions" style="justify-content: space-between; align-items: stretch; margin-top: 30px;">
+            <button class="btn-cancel" style="background: #d32f2f; color: white; margin: 0; padding: 15px 10px; font-size: 16px; flex: 1; max-width: 33%;" onclick="fecharModal('modalFazerPedido')">Cancelar</button>
+            <button class="btn-action" style="background: #2e7d32; margin: 0; padding: 15px 10px; font-size: 18px; flex: 2; margin-left: 10px;" onclick="enviarPedidoConfirmado()">Confirmar</button>
         </div>
     </div>
 </div>
@@ -428,6 +430,7 @@
 <script>
     let db = carregarBanco();
     let categoriaAtual = null;
+    let ordemPopular = false; // FLAG DO FILTRO "TODOS" DINÂMICO
     let pedidosServidor = [];
     let pedidosBloqueados = new Set();
     let pedidosCientes = new Set(); 
@@ -564,11 +567,22 @@
     }
 
     function renderizarFiltros() {
-        let html = `<div class="chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="filtrarCategoria(null)">TODOS</div>`;
+        let textoTodos = ordemPopular ? 'TODOS 🔥' : 'TODOS';
+        let html = `<div class="chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="filtrarCategoria(null)">${textoTodos}</div>`;
         db.categorias.forEach(cat => { const isActive = categoriaAtual === cat.nome; html += `<div class="chip ${isActive ? 'active' : ''}" style="background-color: ${cat.cor}; color: ${cat.corTexto};" onclick="filtrarCategoria('${cat.nome}')">${cat.nome}</div>`; });
         document.getElementById('containerFiltros').innerHTML = html;
     }
-    function filtrarCategoria(cat) { categoriaAtual = cat; renderizarFiltros(); renderizarListaPanelas(); }
+    
+    function filtrarCategoria(cat) { 
+        if (cat === null && categoriaAtual === null) {
+            ordemPopular = !ordemPopular;
+        } else {
+            categoriaAtual = cat;
+            ordemPopular = false;
+        }
+        renderizarFiltros(); 
+        renderizarListaPanelas(); 
+    }
 
     function getPopularidade30d() {
         let pop = {};
@@ -591,7 +605,7 @@
         const lista = document.getElementById('listaProdutosPanelas'); lista.innerHTML = '';
         let filtrados = categoriaAtual === null ? [...db.produtos] : db.produtos.filter(p => p.categoria === categoriaAtual);
         
-        if (categoriaAtual === null) {
+        if (categoriaAtual === null && ordemPopular) {
             let pop = getPopularidade30d();
             filtrados.sort((a, b) => {
                 let countA = pop[a.nome] || 0;
@@ -646,7 +660,6 @@
         const nome = document.getElementById('pedidoItemNome').value; 
         const obsText = document.getElementById('pedidoObsText').value.trim();
         
-        // --- TRAVA DE REENVIO DE ITENS IGUAIS ---
         let itemEmProducao = pedidosServidor.some(p => p.produto.split(" (Obs:")[0] === nome && (p.status === 'pendente' || p.status === 'fazendo'));
         let configReenvio = db.configs.reenvio || 'permitido';
         
@@ -720,7 +733,6 @@
 
     function corrigirTemposAbsurdos() {
         let medias = {}; let counts = {};
-        // Calcula a média ignorando absurdos maiores que 2 horas (para não sujar a própria média)
         pedidosServidor.forEach(p => {
             if ((p.status === 'enviado' || p.status === 'buscar' || p.status === 'concluido') && p.finalizadoEm) {
                 let mins = Math.floor((new Date(p.finalizadoEm).getTime() - new Date(p.timestamp).getTime()) / 60000);
@@ -734,7 +746,6 @@
         Object.keys(medias).forEach(k => medias[k] = Math.round(medias[k] / counts[k]));
 
         let mudou = false;
-        // Poda os absurdos (mudou, já muda de vez)
         pedidosServidor.forEach(p => {
             if ((p.status === 'enviado' || p.status === 'buscar' || p.status === 'concluido') && p.finalizadoEm) {
                 let n = p.produto.split(" (Obs:")[0];
@@ -790,7 +801,7 @@
                 return pServ;
             });
 
-            corrigirTemposAbsurdos(); // Executa a limpeza silenciosa dos tempos absurdos
+            corrigirTemposAbsurdos(); 
 
             if(db.configs.modo === 'cozinha') { renderizarListaCozinha(); } else { renderizarUltimosPedidos(); }
             gerenciarAlarme();
@@ -845,7 +856,9 @@
             return (agora - new Date(p.finalizadoEm).getTime()) < 300000;
         }).reverse().forEach(p => {
             
-            let emoji = '🔔'; let isFinal = false; let formatProduto = `<strong>${p.produto}</strong>`;
+            let emoji = '🔔'; let isFinal = false; 
+            // FONTE MAIOR NA COZINHA AQUI:
+            let formatProduto = `<strong style="font-size: 22px;">${p.produto}</strong>`;
             let acaoTxt = ""; let tempoStr = ""; let classeRiscar = "";
             
             if (p.status === 'pendente') { 
@@ -885,7 +898,7 @@
                     <div class="item-avatar ${classeRiscar}" style="background:transparent; font-size:24px; margin-right: 10px;">${emoji}</div>
                     <div class="item-info" style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <div class="item-title ${classeRiscar}" style="margin: 0;">${formatProduto}</div>
+                            <div class="item-title ${classeRiscar}" style="margin: 0; line-height: 1.2;">${formatProduto}</div>
                             ${subtitleHtml}
                         </div>
                         <div style="font-size:13px; color:#888; font-weight:bold; white-space:nowrap; margin-left:10px;">${tempoStr}</div>
